@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Color Pepper · UI Mockup</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app">
+    <!-- ===== Top Bar ===== -->
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-dot"></span>
+        <span class="brand-name">Color&nbsp;Pepper</span>
+      </div>
+      <div class="search">
+        <span class="search-icon">⌕</span>
+        <input type="text" placeholder="搜索 symbol，例如 BTC、SOL…" />
+        <span class="search-kbd">⌘K</span>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn" title="刷新">↻</button>
+        <button class="icon-btn" title="设置">⚙</button>
+        <div class="avatar">A</div>
+      </div>
+    </header>
+
+    <!-- ===== Sidebar ===== -->
+    <nav class="sidebar">
+      <button class="nav-item active" data-view="symbols">
+        <span class="nav-ic">▤</span><span>行情列表</span>
+      </button>
+      <button class="nav-item" data-view="watchlist">
+        <span class="nav-ic">★</span><span>自选</span>
+        <span class="nav-badge">7</span>
+      </button>
+      <button class="nav-item" data-view="kline">
+        <span class="nav-ic">📈</span><span>K线面板</span>
+      </button>
+      <button class="nav-item" data-view="rotation">
+        <span class="nav-ic">🔥</span><span>板块轮动</span>
+      </button>
+      <button class="nav-item" data-view="similarity">
+        <span class="nav-ic">∿</span><span>走势相似</span>
+      </button>
+
+      <div class="nav-divider"></div>
+      <div class="nav-section">最近浏览</div>
+      <button class="nav-item small"><span class="dot up"></span>BTC/USDT</button>
+      <button class="nav-item small"><span class="dot up"></span>SOL/USDT</button>
+      <button class="nav-item small"><span class="dot dn"></span>DOGE/USDT</button>
+      <button class="nav-item small"><span class="dot up"></span>ETH/USDT</button>
+    </nav>
+
+    <!-- ===== Main ===== -->
+    <main class="main">
+
+      <!-- ===== View 1: Symbols List ===== -->
+      <section class="view" data-view="symbols">
+        <div class="view-head">
+          <div class="view-title">行情列表</div>
+          <div class="filters">
+            <button class="chip active">全部</button>
+            <button class="chip">USDT</button>
+            <button class="chip">USDC</button>
+            <button class="chip">BTC</button>
+            <button class="chip">ETH</button>
+            <span class="sep"></span>
+            <button class="chip">现货</button>
+            <button class="chip">合约</button>
+          </div>
+        </div>
+
+        <div class="table-card">
+          <div class="thead">
+            <div class="th col-fav"></div>
+            <div class="th col-name">Symbol</div>
+            <div class="th col-num">最新价</div>
+            <div class="th col-num">24h 涨跌</div>
+            <div class="th col-spark">7d 走势</div>
+            <div class="th col-num">24h 成交额</div>
+            <div class="th col-num">市值</div>
+          </div>
+          <div class="tbody">
+            <!-- rows generated -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== View 2: Watchlist ===== -->
+      <section class="view hidden" data-view="watchlist">
+        <div class="view-head">
+          <div class="view-title">自选 <span class="muted">· 7</span></div>
+          <div class="filters">
+            <button class="chip active">默认分组</button>
+            <button class="chip">短线</button>
+            <button class="chip">长线</button>
+            <button class="chip ghost">+ 新建分组</button>
+          </div>
+        </div>
+
+        <div class="watch-grid">
+          <!-- cards generated -->
+        </div>
+      </section>
+
+      <!-- ===== View 3: Kline ===== -->
+      <section class="view hidden" data-view="kline">
+        <div class="kline-head">
+          <div class="sym">
+            <div class="sym-icon">₿</div>
+            <div>
+              <div class="sym-name">BTC/USDT <span class="muted">· Binance</span></div>
+              <div class="sym-sub muted">Bitcoin / Tether</div>
+            </div>
+          </div>
+          <div class="sym-stats">
+            <div class="stat-big up">67,234.50</div>
+            <div class="stat-cell"><span class="muted">24h</span><span class="up">+2.34%</span></div>
+            <div class="stat-cell"><span class="muted">高</span><span>67,890.10</span></div>
+            <div class="stat-cell"><span class="muted">低</span><span>65,012.30</span></div>
+            <div class="stat-cell"><span class="muted">额</span><span>1.42B</span></div>
+          </div>
+          <div class="kline-actions">
+            <button class="btn primary">★ 加入自选</button>
+            <button class="icon-btn">⤢</button>
+          </div>
+        </div>
+
+        <div class="kline-toolbar">
+          <div class="tf-group">
+            <button class="tf">1m</button>
+            <button class="tf">5m</button>
+            <button class="tf">15m</button>
+            <button class="tf active">1h</button>
+            <button class="tf">4h</button>
+            <button class="tf">1d</button>
+            <button class="tf">1w</button>
+          </div>
+          <div class="tf-group">
+            <button class="tf">指标 ▾</button>
+            <button class="tf">画线</button>
+            <button class="tf">对比</button>
+          </div>
+          <div class="grow"></div>
+          <div class="tf-group">
+            <button class="tf">蜡烛</button>
+            <button class="tf">面积</button>
+            <button class="tf">⚙</button>
+          </div>
+        </div>
+
+        <div class="kline-body">
+          <div class="chart-area">
+            <div class="chart-card big">
+              <svg viewBox="0 0 800 320" preserveAspectRatio="none" class="chart-svg">
+                <!-- grid -->
+                <g stroke="#1d2330" stroke-width="1">
+                  <line x1="0" y1="60"  x2="800" y2="60" />
+                  <line x1="0" y1="120" x2="800" y2="120" />
+                  <line x1="0" y1="180" x2="800" y2="180" />
+                  <line x1="0" y1="240" x2="800" y2="240" />
+                </g>
+                <!-- candles (simple mock) -->
+                <g class="candles"></g>
+                <!-- ma line -->
+                <polyline class="ma" fill="none" stroke="#f0b341" stroke-width="1.5"
+                  points="0,200 40,190 80,180 120,170 160,165 200,160 240,155 280,150 320,140 360,135 400,130 440,128 480,125 520,118 560,115 600,108 640,100 680,95 720,90 760,82 800,78" />
+              </svg>
+              <div class="price-axis">
+                <span>68,000</span><span>67,000</span><span>66,000</span><span>65,000</span>
+              </div>
+              <div class="crosshair-tag">67,234.50</div>
+            </div>
+
+            <div class="chart-card small">
+              <div class="chart-label muted">成交量</div>
+              <svg viewBox="0 0 800 100" preserveAspectRatio="none" class="chart-svg">
+                <g class="vols"></g>
+              </svg>
+            </div>
+          </div>
+
+          <aside class="kline-side">
+            <div class="side-tabs">
+              <button class="side-tab active">盘口</button>
+              <button class="side-tab">最近成交</button>
+              <button class="side-tab">资金费率</button>
+            </div>
+
+            <div class="orderbook">
+              <div class="ob-head muted">
+                <span>价格(USDT)</span><span>数量(BTC)</span><span>累计</span>
+              </div>
+              <div class="ob asks"></div>
+              <div class="ob-mid">
+                <span class="up">67,234.50</span>
+                <span class="muted">≈ $67,231</span>
+              </div>
+              <div class="ob bids"></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ===== View 4: Sector Rotation ===== -->
+      <section class="view hidden" data-view="rotation">
+        <div class="view-head">
+          <div class="view-title">板块轮动</div>
+          <div class="filters">
+            <button class="chip">1h</button>
+            <button class="chip">4h</button>
+            <button class="chip active">24h</button>
+            <button class="chip">7d</button>
+            <button class="chip">30d</button>
+            <span class="sep"></span>
+            <button class="chip">按市值加权</button>
+            <button class="chip">仅 USDT 永续</button>
+          </div>
+        </div>
+
+        <div class="rotation-grid">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">热力图 <span class="muted">· 大小=成交额，颜色=涨跌</span></div>
+              <div class="legend">
+                <span class="lg-cell" style="background:#b0202a"></span>
+                <span class="lg-cell" style="background:#6a2528"></span>
+                <span class="lg-cell" style="background:#2a2f3a"></span>
+                <span class="lg-cell" style="background:#1f5b3a"></span>
+                <span class="lg-cell" style="background:#1f8a4c"></span>
+                <span class="muted">-10%</span><span class="muted">0</span><span class="muted">+10%</span>
+              </div>
+            </div>
+            <div class="heatmap"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">板块强弱</div>
+              <button class="chip active">按板块</button>
+            </div>
+            <div class="sector-bars"></div>
+          </div>
+
+          <div class="card span-2">
+            <div class="card-head">
+              <div class="card-title">领涨 / 领跌</div>
+              <div class="muted small">点击 symbol 进入 K 线</div>
+            </div>
+            <div class="rank-cols">
+              <div class="rank-col">
+                <div class="rank-title up">🔥 领涨</div>
+                <div class="rank-list" data-side="up"></div>
+              </div>
+              <div class="rank-col">
+                <div class="rank-title dn">❄ 领跌</div>
+                <div class="rank-list" data-side="dn"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== View 5: Similarity ===== -->
+      <section class="view hidden" data-view="similarity">
+        <div class="view-head">
+          <div class="view-title">走势相似</div>
+          <div class="filters">
+            <span class="muted">参考 symbol：</span>
+            <button class="chip active">BTC/USDT ▾</button>
+            <span class="sep"></span>
+            <button class="chip">1h</button>
+            <button class="chip active">4h</button>
+            <button class="chip">1d</button>
+            <span class="sep"></span>
+            <button class="chip">最近 7d</button>
+            <button class="chip active">最近 30d</button>
+            <button class="chip">最近 90d</button>
+          </div>
+        </div>
+
+        <div class="similar-top">
+          <div class="card">
+            <div class="card-head">
+              <div class="card-title">参考走势 · BTC/USDT · 30d</div>
+              <div class="muted small">归一化后展示</div>
+            </div>
+            <div class="ref-chart">
+              <svg viewBox="0 0 800 200" preserveAspectRatio="none" class="chart-svg">
+                <polyline fill="none" stroke="#7aa2ff" stroke-width="2"
+                  points="0,150 40,140 80,135 120,130 160,120 200,118 240,110 280,105 320,108 360,95 400,90 440,85 480,80 520,75 560,70 600,72 640,60 680,55 720,50 760,42 800,38" />
+                <polyline fill="rgba(122,162,255,0.15)" stroke="none"
+                  points="0,150 40,140 80,135 120,130 160,120 200,118 240,110 280,105 320,108 360,95 400,90 440,85 480,80 520,75 560,70 600,72 640,60 680,55 720,50 760,42 800,38 800,200 0,200" />
+              </svg>
+            </div>
+          </div>
+
+          <div class="card algo">
+            <div class="card-head"><div class="card-title">相似度算法</div></div>
+            <div class="algo-row">
+              <label><input type="radio" name="algo" checked /> 皮尔森相关系数</label>
+              <label><input type="radio" name="algo" /> DTW 动态时间规整</label>
+              <label><input type="radio" name="algo" /> 欧氏距离 (归一化)</label>
+            </div>
+            <div class="algo-row range">
+              <span class="muted">最小相关度</span>
+              <input type="range" min="50" max="100" value="70" />
+              <span class="badge">0.70</span>
+            </div>
+            <div class="algo-row range">
+              <span class="muted">展示数量</span>
+              <input type="range" min="4" max="24" value="8" />
+              <span class="badge">8</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="similar-grid"></div>
+      </section>
+
+    </main>
+
+    <footer class="statusbar">
+      <span class="dot up"></span><span class="muted">行情已连接 · Binance · 延迟</span> <span>42ms</span>
+      <span class="grow"></span>
+      <span class="muted">最近更新</span> <span>2026-04-27 16:08:32</span>
+      <span class="grow"></span>
+      <span class="muted">v0.1.0 · mockup</span>
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
