@@ -560,6 +560,7 @@ function switchPage(name) {
   document.querySelectorAll(".page").forEach((el) =>
     el.classList.toggle("hidden", el.dataset.page !== name)
   );
+  if (name === "agent") bootAgent();
 }
 
 document.querySelectorAll(".pn-item").forEach((el) =>
@@ -595,6 +596,253 @@ document.addEventListener("click", (e) => {
 });
 
 // ===== Boot =====
+// ===== Agent page =====
+let agentCtx = { sym: null, tf: null }; // active context chips
+
+function renderAgentContext() {
+  const wrap = document.querySelector(".ai-context");
+  const chips = [];
+  if (agentCtx.sym) chips.push({ k: "sym", label: `📈 ${agentCtx.sym}/USDT` });
+  if (agentCtx.tf)  chips.push({ k: "tf",  label: `⏱ ${agentCtx.tf}` });
+  wrap.innerHTML = chips.map((c) =>
+    `<span class="ai-chip">${c.label}<button class="x" data-clear="${c.k}" title="移除">×</button></span>`
+  ).join("");
+  wrap.querySelectorAll(".x").forEach((b) =>
+    b.addEventListener("click", () => {
+      agentCtx[b.dataset.clear] = null;
+      renderAgentContext();
+    })
+  );
+}
+
+function appendUserMsg(text) {
+  const wrap = document.querySelector(".agent-conv-inner");
+  const div = document.createElement("div");
+  div.className = "msg user";
+  div.innerHTML = `
+    <div class="msg-avatar">A</div>
+    <div class="msg-body">${escapeHtml(text)}</div>`;
+  wrap.appendChild(div);
+  scrollConvToBottom();
+}
+
+function appendAgentMsg(html) {
+  const wrap = document.querySelector(".agent-conv-inner");
+  const div = document.createElement("div");
+  div.className = "msg ag";
+  div.innerHTML = `<div class="msg-avatar">✦</div><div class="msg-body">${html}</div>`;
+  wrap.appendChild(div);
+  scrollConvToBottom();
+  return div;
+}
+
+function appendTypingMsg() {
+  return appendAgentMsg(`<span class="msg-typing"><span></span><span></span><span></span></span>`);
+}
+
+function scrollConvToBottom() {
+  const c = document.querySelector(".agent-conv");
+  c.scrollTop = c.scrollHeight;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// Build a small candle SVG card for an agent reply
+function miniCandleSvg(seed, drift = 0) {
+  const r = rng(seed);
+  const n = 30;
+  let v = 50;
+  const pts = [];
+  for (let i = 0; i < n; i++) {
+    v += (r() - 0.5 + drift * 0.05) * 14;
+    v = Math.max(15, Math.min(85, v));
+    pts.push({ x: (i / (n - 1)) * 240, y: v });
+  }
+  const stroke = drift >= 0 ? "var(--up)" : "var(--dn)";
+  const fill = drift >= 0 ? "var(--up-bg)" : "var(--dn-bg)";
+  const line = pts.map((p) => `${p.x},${p.y}`).join(" ");
+  const area = `${line} 240,90 0,90`;
+  return `
+    <svg viewBox="0 0 240 90" preserveAspectRatio="none" class="mc-mini-svg">
+      <polyline fill="none" style="stroke:${stroke};stroke-width:1.6" points="${line}" />
+      <polyline fill="${fill}" stroke="none" points="${area}" />
+    </svg>`;
+}
+
+// Mock answers — each takes user text + ctx, returns rich HTML
+function fakeAnswer(text, ctx) {
+  const sym = ctx.sym || "BTC";
+  const s = SYMBOLS.find((x) => x.sym === sym) || SYMBOLS[0];
+  const lower = text.toLowerCase();
+
+  // Pattern 1: 解读最近 X
+  if (text.includes("解读") || text.includes("走势") || lower.includes("trend")) {
+    const dir = s.chg >= 0 ? "上行" : "下行";
+    const adj = Math.abs(s.chg) > 4 ? "明显" : "温和";
+    return `
+      <p><strong>简短结论</strong>：${s.sym}/USDT 近 24h 处于${adj}${dir}通道，幅度 ${s.chg >= 0 ? "+" : ""}${s.chg.toFixed(2)}%；当前价 <span class="num">${fmtPx(s.price)}</span>。</p>
+      <div class="msg-card">
+        <div class="mc-head">${s.sym} · 24h <span class="muted">归一化走势</span></div>
+        ${miniCandleSvg(s.seed + 1, s.chg)}
+      </div>
+      <div class="msg-card">
+        <div class="mc-head">关键数据</div>
+        <div class="mc-table">
+          <span class="k">24h 高 / 低</span><span class="v">${fmtPx(s.high)} / ${fmtPx(s.low)}</span>
+          <span class="k">当前位置</span><span class="v">${(((s.price - s.low) / (s.high - s.low)) * 100).toFixed(0)}%</span>
+          <span class="k">24h 量 / 额</span><span class="v">${s.vol} / $${s.vol}</span>
+          <span class="k">市值</span><span class="v">$${s.mcap}</span>
+        </div>
+      </div>
+      <p>${s.chg >= 0
+        ? "短线动能仍在，但已接近 24h 高点，回踩支撑后再观察追多更稳。"
+        : "动能转弱，建议等到日内 RSI 回升或 5m 出现底分型再看反弹机会。"}</p>
+      <div class="msg-actions">
+        <button class="msg-action" data-go-kline="${s.sym}">查看完整 K 线 →</button>
+        <button class="msg-action" data-go-similar="${s.sym}">找相似走势</button>
+        <button class="msg-action">设置告警</button>
+      </div>`;
+  }
+
+  // Pattern 2: 找相似
+  if (text.includes("相似") || text.includes("类似")) {
+    const similars = SYMBOLS
+      .filter((x) => x.sym !== s.sym)
+      .map((x) => ({ ...x, corr: 0.65 + Math.random() * 0.30 }))
+      .sort((a, b) => b.corr - a.corr)
+      .slice(0, 5);
+    return `
+      <p>用 <strong>皮尔森</strong> 计算 ${s.sym} 近 30d 的相关度，前 5 名：</p>
+      <div class="msg-card">
+        <div class="mc-head">相似标的 <span class="muted">点击进 K 线</span></div>
+        <div class="mc-list">
+          ${similars.map((x) => `
+            <div class="mc-list-row clickable" data-go-kline="${x.sym}">
+              <span class="sym-bubble" style="background:${x.color};width:18px;height:18px;font-size:9px">${x.sym[0]}</span>
+              <span>${x.sym}/USDT</span>
+              <span class="corr">ρ ${x.corr.toFixed(2)}</span>
+              <span class="delta ${x.chg >= 0 ? "up" : "dn"}">${x.chg >= 0 ? "+" : ""}${x.chg.toFixed(2)}%</span>
+            </div>`).join("")}
+        </div>
+      </div>
+      <p>注意：高相关 ≠ 因果，仅供寻找替代 / 套保标的参考。</p>`;
+  }
+
+  // Pattern 3: 板块轮动
+  if (text.includes("板块") || text.includes("轮动")) {
+    const sorted = [...SECTORS_DATA].sort((a, b) => b.pct - a.pct);
+    const winners = sorted.slice(0, 3).map((x) => x.name).join("、");
+    const losers = sorted.slice(-3).map((x) => x.name).join("、");
+    return `
+      <p>近 24h 板块强弱排序如下：</p>
+      <div class="msg-card">
+        <div class="mc-head">板块强弱</div>
+        <div class="mc-table">
+          ${sorted.map((x) => `<span class="k">${x.name}</span><span class="v ${x.pct >= 0 ? "up" : "dn"}">${x.pct >= 0 ? "+" : ""}${x.pct.toFixed(1)}%</span>`).join("")}
+        </div>
+      </div>
+      <p><strong>领涨</strong>：${winners}。</p>
+      <p><strong>领跌</strong>：${losers}。</p>
+      <p>资金近期偏好高叙事板块（AI / L1），从 GameFi、MEME 流出，建议避开后者短线回踩位。</p>
+      <div class="msg-actions">
+        <button class="msg-action" data-go-research="rotation">打开完整板块轮动 →</button>
+      </div>`;
+  }
+
+  // Default
+  return `<p>已收到。这是 mockup —— 在真实实现里，会基于上下文 <strong>${ctx.sym || "(未指定)"}</strong>${ctx.tf ? ` · <strong>${ctx.tf}</strong>` : ""} 调用模型回答："${escapeHtml(text)}"。</p>`;
+}
+
+function sendAgentMessage(text) {
+  if (!text || !text.trim()) return;
+  appendUserMsg(text);
+  const placeholder = appendTypingMsg();
+  setTimeout(() => {
+    placeholder.querySelector(".msg-body").innerHTML = fakeAnswer(text, agentCtx);
+    bindAgentMsgActions(placeholder);
+    scrollConvToBottom();
+  }, 380);
+  // clear input
+  const ta = document.querySelector(".ai-textarea");
+  ta.value = "";
+  ta.style.height = "";
+}
+
+function bindAgentMsgActions(scope) {
+  scope.querySelectorAll("[data-go-kline]").forEach((b) =>
+    b.addEventListener("click", () => openKline(b.dataset.goKline))
+  );
+  scope.querySelectorAll("[data-go-similar]").forEach((b) =>
+    b.addEventListener("click", () => {
+      switchPage("research");
+      document.querySelector('.rt-item[data-rsection="similarity"]').click();
+    })
+  );
+  scope.querySelectorAll("[data-go-research]").forEach((b) =>
+    b.addEventListener("click", () => switchPage("research"))
+  );
+}
+
+function bootAgent() {
+  // Initial greeting
+  const wrap = document.querySelector(".agent-conv-inner");
+  if (wrap.children.length) return;
+  const greet = appendAgentMsg(`
+    <p>你好。我是 Color Pepper 的行情研究助手 —— 只读分析，不会下单。</p>
+    <p>你可以这样问我：</p>
+    <div class="msg-suggest">
+      <button class="sg">解读 BTC 最近 24h 走势</button>
+      <button class="sg">和 SOL 走势相似的标的有哪些？</button>
+      <button class="sg">最近哪些板块在轮动？</button>
+    </div>
+  `);
+  greet.querySelectorAll(".sg").forEach((b) =>
+    b.addEventListener("click", () => sendAgentMessage(b.textContent.trim()))
+  );
+}
+
+function openAgent({ sym = null, tf = null } = {}) {
+  if (sym) agentCtx.sym = sym;
+  if (tf)  agentCtx.tf = tf;
+  switchPage("agent");
+  renderAgentContext();
+  bootAgent();
+  setTimeout(() => document.querySelector(".ai-textarea")?.focus(), 50);
+}
+
+// Quick prompts in the input footer
+document.querySelectorAll(".qprompt").forEach((b) =>
+  b.addEventListener("click", () => sendAgentMessage(b.textContent.trim()))
+);
+
+// Send button + Enter to send (Shift+Enter newline)
+document.querySelector(".ai-send")?.addEventListener("click", () => {
+  sendAgentMessage(document.querySelector(".ai-textarea").value);
+});
+document.querySelector(".ai-textarea")?.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && !e.shiftKey) {
+    e.preventDefault();
+    sendAgentMessage(e.currentTarget.value);
+  }
+});
+// Auto-grow textarea
+document.querySelector(".ai-textarea")?.addEventListener("input", (e) => {
+  e.currentTarget.style.height = "";
+  e.currentTarget.style.height = Math.min(200, e.currentTarget.scrollHeight) + "px";
+});
+
+// "问 Agent" button in K-line header
+document.querySelector(".ask-agent")?.addEventListener("click", () => {
+  // Read current symbol from the K-line header
+  const pair = document.querySelector(".kp-pair")?.textContent || "";
+  const sym = pair.split("/")[0].trim();
+  const tfBtn = document.querySelector(".kp-tabs .tf-group .tf.active");
+  const tf = tfBtn?.textContent.trim();
+  openAgent({ sym, tf });
+});
+
 // ===== Theme switching =====
 function applyTheme(name) {
   const root = document.documentElement;
