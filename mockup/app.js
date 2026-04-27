@@ -183,7 +183,7 @@ function renderKlineChart(s) {
   document.querySelector(".kp-chart .candles").innerHTML = candles.map((c, i) => {
     const x = i * cw + cw / 2;
     const up = c.close >= c.open;
-    const color = up ? "#2bd07a" : "#ff5b6e";
+    const color = up ? "#00ff9d" : "#ff2e6c";
     const b1 = y(Math.max(c.open, c.close));
     const b2 = y(Math.min(c.open, c.close));
     return `<line x1="${x}" x2="${x}" y1="${y(c.high)}" y2="${y(c.low)}" stroke="${color}" stroke-width="1"/>
@@ -195,7 +195,7 @@ function renderKlineChart(s) {
     const x = i * cw + 1;
     const bh = (c.vol / vmax) * 90;
     const up = c.close >= c.open;
-    const color = up ? "rgba(43,208,122,.6)" : "rgba(255,91,110,.6)";
+    const color = up ? "rgba(0,255,157,.55)" : "rgba(255,46,108,.55)";
     return `<rect x="${x}" y="${100 - bh}" width="${cw - 2}" height="${bh}" fill="${color}"/>`;
   }).join("");
 
@@ -397,7 +397,7 @@ function renderMiniCandles(s, tf = "4h") {
   return candles.map((c, i) => {
     const x = i * cw + cw / 2;
     const up = c.close >= c.open;
-    const color = up ? "#2bd07a" : "#ff5b6e";
+    const color = up ? "#00ff9d" : "#ff2e6c";
     const b1 = y(Math.max(c.open, c.close));
     const b2 = y(Math.min(c.open, c.close));
     return `<line x1="${x}" x2="${x}" y1="${y(c.high)}" y2="${y(c.low)}" stroke="${color}" stroke-width="1"/>
