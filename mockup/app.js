@@ -103,7 +103,7 @@ function renderSymbolsTable(cat = "All") {
       <div class="col-num"><span class="${s.chg >= 0 ? "up" : "dn"}">${s.chg >= 0 ? "+" : ""}${s.chg.toFixed(2)}%</span></div>
       <div class="col-spark">
         <svg class="spark" viewBox="0 0 100 32" preserveAspectRatio="none">
-          <polyline fill="none" stroke="${colorFor(s.chg)}" stroke-width="1.4"
+          <polyline fill="none" style="stroke:${colorFor(s.chg)};stroke-width:1.4" fill="none"
             points="${sparkPoints(s.seed, 100, 32, s.chg / 5)}" />
         </svg>
       </div>
@@ -183,11 +183,11 @@ function renderKlineChart(s) {
   document.querySelector(".kp-chart .candles").innerHTML = candles.map((c, i) => {
     const x = i * cw + cw / 2;
     const up = c.close >= c.open;
-    const color = up ? "#00ff9d" : "#ff2e6c";
+    const color = up ? "var(--up)" : "var(--dn)";
     const b1 = y(Math.max(c.open, c.close));
     const b2 = y(Math.min(c.open, c.close));
-    return `<line x1="${x}" x2="${x}" y1="${y(c.high)}" y2="${y(c.low)}" stroke="${color}" stroke-width="1"/>
-            <rect x="${i * cw + 1}" y="${b1}" width="${cw - 2}" height="${Math.max(1, b2 - b1)}" fill="${color}"/>`;
+    return `<line x1="${x}" x2="${x}" y1="${y(c.high)}" y2="${y(c.low)}" style="stroke:${color};stroke-width:1"/>
+            <rect x="${i * cw + 1}" y="${b1}" width="${cw - 2}" height="${Math.max(1, b2 - b1)}" style="fill:${color}"/>`;
   }).join("");
 
   const vmax = Math.max(...candles.map((c) => c.vol));
@@ -195,8 +195,8 @@ function renderKlineChart(s) {
     const x = i * cw + 1;
     const bh = (c.vol / vmax) * 90;
     const up = c.close >= c.open;
-    const color = up ? "rgba(0,255,157,.55)" : "rgba(255,46,108,.55)";
-    return `<rect x="${x}" y="${100 - bh}" width="${cw - 2}" height="${bh}" fill="${color}"/>`;
+    const color = up ? "var(--up)" : "var(--dn)";
+    return `<rect x="${x}" y="${100 - bh}" width="${cw - 2}" height="${bh}" style="fill:${color};fill-opacity:.55"/>`;
   }).join("");
 
   // price axis
@@ -360,7 +360,7 @@ function renderRotation() {
       <span class="rank-rank">${i + 1}</span>
       <span class="name"><span class="sym-bubble" style="background:${s.color};width:18px;height:18px;font-size:9px">${s.sym[0]}</span>${s.sym}</span>
       <svg class="spark" viewBox="0 0 80 24" preserveAspectRatio="none">
-        <polyline fill="none" stroke="${side === "up" ? "var(--up)" : "var(--dn)"}" stroke-width="1.4"
+        <polyline fill="none" style="stroke:${side === "up" ? "var(--up)" : "var(--dn)"};stroke-width:1.4" fill="none"
           points="${sparkPoints(s.seed + 9, 80, 24, side === "up" ? 1 : -1)}" />
       </svg>
       <span class="num ${side}">${s.chg >= 0 ? "+" : ""}${s.chg.toFixed(2)}%</span>
@@ -397,11 +397,11 @@ function renderMiniCandles(s, tf = "4h") {
   return candles.map((c, i) => {
     const x = i * cw + cw / 2;
     const up = c.close >= c.open;
-    const color = up ? "#00ff9d" : "#ff2e6c";
+    const color = up ? "var(--up)" : "var(--dn)";
     const b1 = y(Math.max(c.open, c.close));
     const b2 = y(Math.min(c.open, c.close));
-    return `<line x1="${x}" x2="${x}" y1="${y(c.high)}" y2="${y(c.low)}" stroke="${color}" stroke-width="1"/>
-            <rect x="${i * cw + 1}" y="${b1}" width="${Math.max(1, cw - 2)}" height="${Math.max(1, b2 - b1)}" fill="${color}"/>`;
+    return `<line x1="${x}" x2="${x}" y1="${y(c.high)}" y2="${y(c.low)}" style="stroke:${color};stroke-width:1"/>
+            <rect x="${i * cw + 1}" y="${b1}" width="${Math.max(1, cw - 2)}" height="${Math.max(1, b2 - b1)}" style="fill:${color}"/>`;
   }).join("");
 }
 
@@ -595,6 +595,22 @@ document.addEventListener("click", (e) => {
 });
 
 // ===== Boot =====
+// ===== Theme switching =====
+function applyTheme(name) {
+  const root = document.documentElement;
+  if (name === "light") root.dataset.theme = "light";
+  else delete root.dataset.theme;
+  document.querySelectorAll(".tt-btn").forEach((b) =>
+    b.classList.toggle("active", b.dataset.themeSet === name)
+  );
+  try { localStorage.setItem("cp.theme", name); } catch {}
+}
+document.querySelectorAll(".tt-btn").forEach((b) =>
+  b.addEventListener("click", () => applyTheme(b.dataset.themeSet))
+);
+const savedTheme = (() => { try { return localStorage.getItem("cp.theme"); } catch { return null; } })();
+if (savedTheme === "light") applyTheme("light");
+
 renderSectorTabs();
 renderSymbolsTable("All");
 renderKlineSidebar("BTC");

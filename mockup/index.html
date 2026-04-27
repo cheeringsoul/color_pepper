@@ -24,6 +24,10 @@
         <span class="search-kbd">⌘K</span>
       </div>
       <div class="topbar-right">
+        <div class="theme-toggle" role="group" aria-label="主题">
+          <button class="tt-btn active" data-theme-set="dark" title="暗色 / 赛博朋克">◐</button>
+          <button class="tt-btn" data-theme-set="light" title="浅色 / Pepper">☼</button>
+        </div>
         <button class="icon-btn" title="刷新">↻</button>
         <button class="icon-btn" title="提醒">🔔</button>
         <button class="icon-btn" title="设置">⚙</button>
@@ -294,7 +298,7 @@
 
         <div class="kp-chart">
           <svg viewBox="0 0 800 320" preserveAspectRatio="none" class="chart-svg">
-            <g stroke="#1a2342" stroke-width="1">
+            <g class="chart-grid" stroke-width="1">
               <line x1="0" y1="60"  x2="800" y2="60" />
               <line x1="0" y1="120" x2="800" y2="120" />
               <line x1="0" y1="180" x2="800" y2="180" />
@@ -443,7 +447,7 @@
       </div>
       <div class="mk-chart">
         <svg viewBox="0 0 400 160" preserveAspectRatio="none" class="chart-svg">
-          <g stroke="#1a2342" stroke-width="1">
+          <g class="chart-grid" stroke-width="1">
             <line x1="0" y1="40" x2="400" y2="40" />
             <line x1="0" y1="80" x2="400" y2="80" />
             <line x1="0" y1="120" x2="400" y2="120" />
