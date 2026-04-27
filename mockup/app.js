@@ -92,9 +92,6 @@ function renderSymbolsTable(cat = "All") {
     const pos = ((s.price - s.low) / (s.high - s.low)) * 100;
     return `
     <div class="trow" data-sym="${s.sym}">
-      <div class="col-fav">
-        <button class="fav-btn ${s.fav ? "on" : ""}">${s.fav ? "★" : "☆"}</button>
-      </div>
       <div class="col-name sym-cell">
         <span class="sym-bubble" style="background:${s.color}">${s.sym[0]}</span>
         <div class="name-block">
@@ -126,16 +123,7 @@ function renderSymbolsTable(cat = "All") {
   }).join("");
 
   tbody.querySelectorAll(".trow").forEach((row) => {
-    row.addEventListener("click", (e) => {
-      if (e.target.closest(".fav-btn")) return;
-      openKline(row.dataset.sym);
-    });
-    row.querySelector(".fav-btn").addEventListener("click", (e) => {
-      e.stopPropagation();
-      const btn = e.currentTarget;
-      btn.classList.toggle("on");
-      btn.textContent = btn.classList.contains("on") ? "★" : "☆";
-    });
+    row.addEventListener("click", () => openKline(row.dataset.sym));
     row.querySelectorAll(".tbtn").forEach((b) =>
       b.addEventListener("click", (e) => {
         e.stopPropagation();
