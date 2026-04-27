@@ -139,7 +139,6 @@ function renderKlineSidebar(activeSym = "BTC") {
   list.innerHTML = SYMBOLS.map((s) => `
     <div class="kps-row ${s.sym === activeSym ? "active" : ""}" data-sym="${s.sym}">
       <div class="name">
-        <span class="star ${s.fav ? "on" : ""}">${s.fav ? "★" : "☆"}</span>
         <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
           <div><span class="ticker">${s.sym}/${s.pair}</span><span class="lev">10x</span></div>
           <div class="vol">$${s.mcap}</div>

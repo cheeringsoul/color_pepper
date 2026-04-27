@@ -477,8 +477,6 @@ input { font-family: inherit; }
 .kps-row:hover { background: var(--bg-2); }
 .kps-row.active { background: var(--bg-3); border-left: 2px solid var(--accent); padding-left: 8px; }
 .kps-row .name { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.kps-row .star { color: var(--text-3); font-size: 11px; }
-.kps-row .star.on { color: var(--accent-2); }
 .kps-row .ticker { font-weight: 600; }
 .kps-row .lev { font-size: 9px; color: var(--text-3); background: var(--bg-3); padding: 0 4px; border-radius: 3px; margin-left: 2px; }
 .kps-row .vol { color: var(--text-3); font-size: 10px; }
