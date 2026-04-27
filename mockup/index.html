@@ -101,6 +101,7 @@
       <div class="research-tabs">
         <button class="rt-item active" data-rsection="rotation">板块轮动</button>
         <button class="rt-item" data-rsection="similarity">走势相似</button>
+        <button class="rt-item" data-rsection="compare">多图对比</button>
       </div>
 
       <!-- Rotation -->
@@ -219,9 +220,70 @@
           </div>
         </div>
 
+        <div class="similar-actions">
+          <button class="btn-add-all">＋ 全部加入对比 →</button>
+        </div>
         <div class="similar-grid"></div>
       </section>
+
+      <!-- Compare -->
+      <section class="rsection hidden" data-rsection="compare">
+        <div class="view-head">
+          <div class="filters">
+            <span class="muted small">周期：</span>
+            <button class="chip">15m</button>
+            <button class="chip">1h</button>
+            <button class="chip active">4h</button>
+            <button class="chip">1d</button>
+            <button class="chip">1w</button>
+            <span class="sep"></span>
+            <span class="muted small">网格：</span>
+            <button class="chip cmp-cols" data-cols="2">2 列</button>
+            <button class="chip cmp-cols active" data-cols="3">3 列</button>
+            <button class="chip cmp-cols" data-cols="4">4 列</button>
+            <span class="sep"></span>
+            <button class="chip" id="cmp-norm">归一化</button>
+            <span class="grow"></span>
+            <button class="chip" id="cmp-add">＋ 添加</button>
+            <button class="chip" id="cmp-import">⇪ 批量导入</button>
+            <button class="chip" id="cmp-clear">清空</button>
+          </div>
+        </div>
+        <div class="cmp-meta muted small"></div>
+        <div class="cmp-grid" data-cols="3"></div>
+      </section>
     </main>
+
+    <!-- Batch import dialog -->
+    <div class="cmp-dialog hidden" data-dialog="cmp-import">
+      <div class="cd-card">
+        <div class="cd-head">
+          <div class="cd-title">批量导入 symbol</div>
+          <button class="cd-close">×</button>
+        </div>
+        <div class="cd-body">
+          <div class="muted small" style="margin-bottom:6px">用逗号、空格或换行分隔。已存在的会去重，不存在的会标红。</div>
+          <textarea class="cd-input" rows="5" placeholder="BTC, ETH, SOL&#10;BNB AVAX TON&#10;..."></textarea>
+          <div class="cd-section muted small">从板块快速添加：</div>
+          <div class="cd-quick">
+            <button class="chip" data-quick="主流币">主流币</button>
+            <button class="chip" data-quick="Layer 1">Layer 1</button>
+            <button class="chip" data-quick="Layer 2">Layer 2</button>
+            <button class="chip" data-quick="DeFi">DeFi</button>
+            <button class="chip" data-quick="Meme">Meme</button>
+            <button class="chip" data-quick="AI">AI</button>
+            <button class="chip" data-quick="Solana">Solana</button>
+            <button class="chip" data-quick="自选">自选</button>
+          </div>
+          <div class="cd-preview muted small"></div>
+        </div>
+        <div class="cd-foot">
+          <button class="cd-btn ghost" data-cd-action="cancel">取消</button>
+          <button class="cd-btn primary" data-cd-action="apply">替换 (0)</button>
+          <button class="cd-btn" data-cd-action="append">追加 (0)</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ===== Page: Agent (chat) ===== -->
     <main class="page hidden agent-page" data-page="agent">

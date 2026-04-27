@@ -494,25 +494,28 @@ document.querySelector(".mk-goto").addEventListener("click", () => {
   }
 });
 
+const SIMILAR_DATA = [
+  { sym: "ETH",  corr: 0.94, color: "#627eea", seed: 222 },
+  { sym: "BNB",  corr: 0.87, color: "#f0b341", seed: 223 },
+  { sym: "SOL",  corr: 0.82, color: "#9945ff", seed: 224 },
+  { sym: "AVAX", corr: 0.79, color: "#e84142", seed: 225 },
+  { sym: "TON",  corr: 0.76, color: "#0098ea", seed: 226 },
+  { sym: "ARB",  corr: 0.73, color: "#2d374b", seed: 227 },
+  { sym: "LINK", corr: 0.71, color: "#2a5ada", seed: 228 },
+  { sym: "OP",   corr: 0.70, color: "#ff0420", seed: 229 },
+];
+
 function renderSimilarity() {
   const grid = document.querySelector('[data-rsection="similarity"] .similar-grid');
-  const data = [
-    { sym: "ETH",  corr: 0.94, color: "#627eea", seed: 222 },
-    { sym: "BNB",  corr: 0.87, color: "#f0b341", seed: 223 },
-    { sym: "SOL",  corr: 0.82, color: "#9945ff", seed: 224 },
-    { sym: "AVAX", corr: 0.79, color: "#e84142", seed: 225 },
-    { sym: "TON",  corr: 0.76, color: "#0098ea", seed: 226 },
-    { sym: "ARB",  corr: 0.73, color: "#2d374b", seed: 227 },
-    { sym: "LINK", corr: 0.71, color: "#2a5ada", seed: 228 },
-    { sym: "OP",   corr: 0.70, color: "#ff0420", seed: 229 },
-  ];
   const refSeed = 4242;
-  grid.innerHTML = data.map((d) => {
+  grid.innerHTML = SIMILAR_DATA.map((d) => {
     const refPts = sparkPoints(refSeed, 240, 70, 0.6);
     const candPts = sparkPoints(d.seed, 240, 70, 0.6 * d.corr);
     const klass = d.corr >= 0.85 ? "high" : "mid";
+    const inCmp = compareState.includes(d.sym);
     return `
       <div class="sim-card" data-sym="${d.sym}">
+        <button class="sim-add ${inCmp ? "added" : ""}" data-sym-add="${d.sym}" title="${inCmp ? "已在对比" : "加入对比"}">${inCmp ? "✓" : "+"}</button>
         <div class="sim-head">
           <span class="sym-bubble" style="background:${d.color}">${d.sym[0]}</span>
           <span class="sim-name">${d.sym}/USDT</span>
@@ -526,8 +529,243 @@ function renderSimilarity() {
       </div>`;
   }).join("");
   grid.querySelectorAll(".sim-card").forEach((c) =>
+    c.addEventListener("click", (e) => {
+      if (e.target.closest(".sim-add")) return;
+      openKline(c.dataset.sym);
+    })
+  );
+  grid.querySelectorAll(".sim-add").forEach((b) =>
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      compareAdd([b.dataset.symAdd]);
+    })
+  );
+  document.querySelector(".btn-add-all")?.addEventListener("click", () => {
+    compareAdd(SIMILAR_DATA.map((d) => d.sym));
+    document.querySelector('.rt-item[data-rsection="compare"]').click();
+  }, { once: true });
+}
+
+// ===== Compare page =====
+let compareState = ["BTC", "ETH", "SOL", "BNB", "AVAX", "DOGE"];
+let compareNorm = false;
+let compareTf = "4h";
+
+function compareAdd(syms) {
+  const validUpper = syms
+    .map((s) => String(s).trim().toUpperCase())
+    .filter((s) => s);
+  for (const u of validUpper) {
+    const known = SYMBOLS.find((x) => x.sym === u);
+    if (known && !compareState.includes(known.sym)) compareState.push(known.sym);
+  }
+  renderCompare();
+  renderSimilarity(); // refresh "+" button states
+}
+
+function compareRemove(sym) {
+  compareState = compareState.filter((s) => s !== sym);
+  renderCompare();
+  renderSimilarity();
+}
+
+function compareCard(sym) {
+  const s = SYMBOLS.find((x) => x.sym === sym);
+  if (!s) {
+    return `
+      <div class="cmp-card miss" data-sym="${sym}">
+        <button class="cmp-rm" data-rm="${sym}" title="移除">×</button>
+        <div class="cmp-head">
+          <span class="cmp-name">${sym}</span>
+          <span class="cmp-chg dn">未识别</span>
+        </div>
+        <div class="muted small">在 mock 数据里找不到这个 symbol</div>
+      </div>`;
+  }
+  const tfSeed = { "15m": 1, "1h": 3, "4h": 7, "1d": 11, "1w": 17 }[compareTf] || 7;
+  const r = rng(s.seed * tfSeed + 5);
+  const n = 50;
+  let price = s.price * 0.95;
+  const candles = [];
+  for (let i = 0; i < n; i++) {
+    const open = price;
+    const drift = (s.chg / 100) * 0.5;
+    const change = (r() - 0.5 + drift / n) * s.price * 0.013;
+    const close = open + change;
+    candles.push({ open, close,
+      high: Math.max(open, close) + r() * s.price * 0.005,
+      low:  Math.min(open, close) - r() * s.price * 0.005 });
+    price = close;
+  }
+  const mn = Math.min(...candles.map((c) => c.low));
+  const mx = Math.max(...candles.map((c) => c.high));
+  const w = 320, h = 110, cw = w / n;
+  const y = (p) => ((mx - p) / (mx - mn)) * (h - 12) + 6;
+  const candlesSvg = candles.map((c, i) => {
+    const x = i * cw + cw / 2;
+    const up = c.close >= c.open;
+    const color = up ? "var(--up)" : "var(--dn)";
+    const b1 = y(Math.max(c.open, c.close));
+    const b2 = y(Math.min(c.open, c.close));
+    return `<line x1="${x}" x2="${x}" y1="${y(c.high)}" y2="${y(c.low)}" style="stroke:${color};stroke-width:1"/>
+            <rect x="${i * cw + 1}" y="${b1}" width="${Math.max(1, cw - 2)}" height="${Math.max(1, b2 - b1)}" style="fill:${color}"/>`;
+  }).join("");
+
+  return `
+    <div class="cmp-card" data-sym="${sym}">
+      <button class="cmp-rm" data-rm="${sym}" title="移除">×</button>
+      <div class="cmp-head">
+        <span class="sym-bubble" style="background:${s.color};width:18px;height:18px;font-size:9px">${s.sym[0]}</span>
+        <span class="cmp-name">${s.sym}/${s.pair}</span>
+        <span class="cmp-price">${fmtPx(s.price)}</span>
+      </div>
+      <svg class="cmp-chart" viewBox="0 0 320 110" preserveAspectRatio="none">${candlesSvg}</svg>
+      <div class="cmp-meta-row">
+        <span class="${s.chg >= 0 ? "up" : "dn"}">${s.chg >= 0 ? "+" : ""}${s.chg.toFixed(2)}%</span>
+        <span>H ${fmtPx(s.high)}</span>
+        <span>L ${fmtPx(s.low)}</span>
+      </div>
+    </div>`;
+}
+
+function renderCompare() {
+  const grid = document.querySelector('[data-rsection="compare"] .cmp-grid');
+  const meta = document.querySelector('[data-rsection="compare"] .cmp-meta');
+  if (!grid) return;
+
+  if (!compareState.length) {
+    grid.innerHTML = `
+      <div class="cmp-empty">
+        <div>对比池为空</div>
+        <button id="cmp-empty-add">＋ 添加 symbol</button>
+        <button id="cmp-empty-import">⇪ 批量导入</button>
+        <button id="cmp-empty-similar">从"走势相似"导入</button>
+      </div>`;
+    meta.textContent = "";
+    grid.querySelector("#cmp-empty-add")?.addEventListener("click", () => openImportDialog(true));
+    grid.querySelector("#cmp-empty-import")?.addEventListener("click", () => openImportDialog());
+    grid.querySelector("#cmp-empty-similar")?.addEventListener("click", () =>
+      document.querySelector('.rt-item[data-rsection="similarity"]').click()
+    );
+    return;
+  }
+
+  meta.textContent = `共 ${compareState.length} 个 · 周期 ${compareTf}${compareNorm ? " · 已归一化" : ""}`;
+  grid.innerHTML = compareState.map(compareCard).join("");
+  grid.querySelectorAll(".cmp-rm").forEach((b) =>
+    b.addEventListener("click", (e) => {
+      e.stopPropagation();
+      compareRemove(b.dataset.rm);
+    })
+  );
+  grid.querySelectorAll(".cmp-card").forEach((c) =>
     c.addEventListener("click", () => openKline(c.dataset.sym))
   );
+}
+
+// ----- Toolbar bindings -----
+function bindCompareToolbar() {
+  const sec = document.querySelector('[data-rsection="compare"]');
+  // timeframe chips
+  sec.querySelectorAll(".filters .chip").forEach((c) => {
+    if (["15m","1h","4h","1d","1w"].includes(c.textContent.trim())) {
+      c.addEventListener("click", () => {
+        compareTf = c.textContent.trim();
+        renderCompare();
+      });
+    }
+  });
+  // grid density buttons
+  sec.querySelectorAll(".cmp-cols").forEach((b) => {
+    b.addEventListener("click", () => {
+      sec.querySelectorAll(".cmp-cols").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+      sec.querySelector("div.cmp-grid").dataset.cols = b.dataset.cols;
+    });
+  });
+  // norm toggle
+  document.querySelector("#cmp-norm")?.addEventListener("click", function () {
+    compareNorm = !compareNorm;
+    this.classList.toggle("active", compareNorm);
+    renderCompare();
+  });
+  // clear
+  document.querySelector("#cmp-clear")?.addEventListener("click", () => {
+    compareState = [];
+    renderCompare();
+    renderSimilarity();
+  });
+  // add (one symbol via prompt-like dialog, reuse import dialog)
+  document.querySelector("#cmp-add")?.addEventListener("click", () => openImportDialog());
+  document.querySelector("#cmp-import")?.addEventListener("click", () => openImportDialog());
+}
+
+// ----- Batch import dialog -----
+function parseSymbolList(text) {
+  return text.split(/[\s,;\n\t]+/).map((x) => x.trim().toUpperCase()).filter(Boolean);
+}
+function classifySymbols(arr) {
+  const known = new Set(SYMBOLS.map((s) => s.sym));
+  const ok = [], miss = [];
+  for (const s of arr) (known.has(s) ? ok : miss).push(s);
+  return { ok: [...new Set(ok)], miss: [...new Set(miss)] };
+}
+function updateImportPreview() {
+  const ta = document.querySelector(".cd-input");
+  const preview = document.querySelector(".cd-preview");
+  const replaceBtn = document.querySelector('[data-cd-action="apply"]');
+  const appendBtn = document.querySelector('[data-cd-action="append"]');
+  const { ok, miss } = classifySymbols(parseSymbolList(ta.value));
+  preview.innerHTML =
+    (ok.length ? `<span class="pill-ok">识别 ${ok.length} 个</span>: ${ok.join(", ")}` : `<span>暂未识别任何 symbol</span>`) +
+    (miss.length ? ` <span class="pill-miss">未识别 ${miss.length}</span>: ${miss.join(", ")}` : "");
+  replaceBtn.textContent = `替换 (${ok.length})`;
+  appendBtn.textContent = `追加 (${ok.length})`;
+}
+
+function openImportDialog() {
+  const dlg = document.querySelector('[data-dialog="cmp-import"]');
+  dlg.classList.remove("hidden");
+  const ta = dlg.querySelector(".cd-input");
+  ta.value = "";
+  updateImportPreview();
+  setTimeout(() => ta.focus(), 30);
+}
+function closeImportDialog() {
+  document.querySelector('[data-dialog="cmp-import"]').classList.add("hidden");
+}
+
+function bindImportDialog() {
+  const dlg = document.querySelector('[data-dialog="cmp-import"]');
+  if (!dlg) return;
+  dlg.querySelector(".cd-close").addEventListener("click", closeImportDialog);
+  dlg.querySelector('[data-cd-action="cancel"]').addEventListener("click", closeImportDialog);
+  dlg.addEventListener("click", (e) => { if (e.target === dlg) closeImportDialog(); });
+  dlg.querySelector(".cd-input").addEventListener("input", updateImportPreview);
+  dlg.querySelectorAll(".cd-quick .chip").forEach((c) =>
+    c.addEventListener("click", () => {
+      const cat = c.dataset.quick;
+      let syms = [];
+      if (cat === "自选") syms = SYMBOLS.filter((s) => s.fav).map((s) => s.sym);
+      else syms = SYMBOLS.filter((s) => s.cats.includes(cat)).map((s) => s.sym);
+      const ta = dlg.querySelector(".cd-input");
+      const existing = parseSymbolList(ta.value);
+      const merged = [...new Set([...existing, ...syms])];
+      ta.value = merged.join(", ");
+      updateImportPreview();
+    })
+  );
+  dlg.querySelector('[data-cd-action="apply"]').addEventListener("click", () => {
+    const { ok } = classifySymbols(parseSymbolList(dlg.querySelector(".cd-input").value));
+    compareState = [];
+    compareAdd(ok);
+    closeImportDialog();
+  });
+  dlg.querySelector('[data-cd-action="append"]').addEventListener("click", () => {
+    const { ok } = classifySymbols(parseSymbolList(dlg.querySelector(".cd-input").value));
+    compareAdd(ok);
+    closeImportDialog();
+  });
 }
 
 // ===== ETF bars decoration =====
@@ -864,6 +1102,9 @@ renderSymbolsTable("All");
 renderKlineSidebar("BTC");
 renderRotation();
 renderSimilarity();
+renderCompare();
+bindCompareToolbar();
+bindImportDialog();
 renderEtfBars();
 // preload kline chart so opening is instant
 renderKlineChart(SYMBOLS[0]);
