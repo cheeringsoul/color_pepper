@@ -165,38 +165,42 @@ input { font-family: inherit; }
 .market-stats {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  padding: 14px 16px 8px;
+  gap: 16px;
+  padding: 20px 24px 12px;
 }
 .stat-card {
   background: var(--bg-1);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 12px 14px;
+  padding: 18px 18px 16px;
   position: relative;
   overflow: hidden;
 }
-.sc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
-.sc-title { font-size: 13px; font-weight: 600; }
-.sc-list { display: flex; flex-direction: column; gap: 4px; }
+.sc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
+.sc-title { font-size: 15px; font-weight: 600; }
+.sc-list { display: flex; flex-direction: column; gap: 8px; }
 .sc-row {
   display: grid;
-  grid-template-columns: 18px 1fr auto auto;
-  gap: 8px; align-items: center;
-  font-size: 12px; padding: 2px 0;
+  grid-template-columns: 22px 1fr auto auto;
+  gap: 10px; align-items: center;
+  font-size: 13px; padding: 3px 0;
 }
+.sc-row .sym-mini { width: 22px; height: 22px; font-size: 11px; }
 .sc-name { font-weight: 500; }
 .sc-price { font-variant-numeric: tabular-nums; color: var(--text-2); }
-.macro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 13px; }
-.macro-grid > div > div { display: flex; align-items: center; gap: 6px; }
-.macro-spark { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 36px; opacity: .55; }
-.etf-row { display: flex; justify-content: space-between; padding: 3px 0; font-size: 12px; }
-.etf-bars { width: 100%; height: 36px; margin-top: 4px; }
+.macro-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 20px; font-size: 14px; }
+.macro-grid .muted.small { font-size: 12px; }
+.macro-grid > div > div { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.macro-spark { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 40px; opacity: .55; }
+.etf-row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+.etf-row .muted.small { font-size: 12px; }
+.etf-row .up, .etf-row .dn { font-variant-numeric: tabular-nums; font-weight: 500; }
+.etf-bars { width: 100%; height: 42px; margin-top: 6px; }
 
 /* ===== Market: sector tabs ===== */
 .sector-tabs {
-  display: flex; gap: 4px;
-  padding: 6px 16px;
+  display: flex; gap: 6px;
+  padding: 10px 24px 0;
   border-bottom: 1px solid var(--line);
   overflow-x: auto;
   scrollbar-width: none;
@@ -205,22 +209,22 @@ input { font-family: inherit; }
 .st-item {
   background: transparent; color: var(--text-2);
   border: 0;
-  padding: 8px 14px;
-  font-size: 13px; font-weight: 500;
-  border-radius: 6px;
+  padding: 12px 16px;
+  font-size: 14px; font-weight: 500;
+  border-radius: 6px 6px 0 0;
   white-space: nowrap;
   position: relative;
 }
-.st-item:hover { color: var(--text); background: var(--bg-2); }
+.st-item:hover { color: var(--text); }
 .st-item.active { color: var(--text); }
 .st-item.active::after {
-  content: ""; position: absolute; left: 14px; right: 14px; bottom: -7px;
+  content: ""; position: absolute; left: 16px; right: 16px; bottom: -1px;
   height: 2px; background: var(--accent); border-radius: 2px;
 }
 
 /* ===== Market: table ===== */
 .table-card {
-  margin: 12px 16px;
+  margin: 16px 24px 24px;
   background: var(--bg-1);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -228,37 +232,41 @@ input { font-family: inherit; }
 }
 .thead, .trow {
   display: grid;
-  grid-template-columns: 40px 1.6fr 1fr 1fr 1.5fr 2fr 1fr 120px;
+  grid-template-columns: 48px 1.8fr 1fr 1fr 1.5fr 2fr 1fr 140px;
   align-items: center;
-  gap: 6px;
-  padding: 0 14px;
-  height: 44px;
+  gap: 10px;
+  padding: 0 18px;
+  height: 60px;
 }
 .thead {
   background: var(--bg-2);
   border-bottom: 1px solid var(--line);
   color: var(--text-3);
-  font-size: 11px; text-transform: uppercase; letter-spacing: .5px;
-  height: 36px;
+  font-size: 12px; letter-spacing: .3px;
+  height: 44px;
+  font-weight: 500;
 }
 .trow { border-bottom: 1px solid var(--line); cursor: pointer; transition: background .12s; }
 .trow:hover { background: var(--bg-2); }
 .trow:last-child { border-bottom: 0; }
+.trow .col-num { font-size: 14px; }
 .col-num, .th.col-num { text-align: right; font-variant-numeric: tabular-nums; }
 .col-act, .th.col-act { text-align: right; }
-.fav-btn { background: transparent; border: 0; color: var(--text-3); font-size: 14px; padding: 4px; }
+.fav-btn { background: transparent; border: 0; color: var(--text-3); font-size: 16px; padding: 4px; }
 .fav-btn.on { color: var(--accent-2); }
-.sym-cell { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.sym-cell .name-block { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
-.sym-cell .name-block .ticker { font-weight: 600; font-size: 13px; }
-.sym-cell .name-block .full { color: var(--text-3); font-size: 11px; }
-.spark { width: 100%; height: 32px; }
+.sym-cell { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sym-cell .sym-bubble { width: 28px; height: 28px; font-size: 13px; }
+.sym-cell .name-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.sym-cell .name-block .ticker { font-weight: 600; font-size: 14px; }
+.sym-cell .name-block .ticker .muted.small { font-size: 12px; }
+.sym-cell .name-block .full { color: var(--text-3); font-size: 12px; }
+.spark { width: 100%; height: 36px; }
 
 /* range bar in table */
 .range-bar {
   position: relative;
   height: 4px; background: var(--bg-3); border-radius: 2px;
-  margin: 0 8px;
+  margin: 0 10px;
 }
 .range-bar .marker {
   position: absolute; top: -3px; width: 10px; height: 10px;
@@ -266,8 +274,8 @@ input { font-family: inherit; }
   transform: translateX(-50%);
 }
 .range-bar .lo, .range-bar .hi {
-  position: absolute; top: 8px;
-  font-size: 10px; color: var(--text-3); font-variant-numeric: tabular-nums;
+  position: absolute; top: 10px;
+  font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums;
 }
 .range-bar .lo { left: 0; }
 .range-bar .hi { right: 0; }
@@ -275,8 +283,8 @@ input { font-family: inherit; }
 
 .tbtn {
   background: var(--bg-3); color: var(--text-2);
-  border: 0; padding: 4px 10px; border-radius: 4px;
-  font-size: 12px; margin-left: 6px;
+  border: 0; padding: 6px 12px; border-radius: 4px;
+  font-size: 13px; margin-left: 6px;
 }
 .tbtn:hover { background: var(--bg-4); color: var(--text); }
 .tbtn.primary { background: var(--accent); color: white; }
