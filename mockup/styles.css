@@ -222,13 +222,12 @@ input { font-family: inherit; }
   height: 2px; background: var(--accent); border-radius: 2px;
 }
 
-/* ===== Market: table ===== */
+/* ===== Market: table (flat, OKX-style) ===== */
 .table-card {
-  margin: 16px 24px 24px;
-  background: var(--bg-1);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
+  margin: 4px 24px 24px;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
 }
 .thead, .trow {
   display: grid;
@@ -239,12 +238,18 @@ input { font-family: inherit; }
   height: 60px;
 }
 .thead {
-  background: var(--bg-2);
-  border-bottom: 1px solid var(--line);
+  background: transparent;
+  border-bottom: 0;
   color: var(--text-3);
   font-size: 12px; letter-spacing: .3px;
-  height: 44px;
-  font-weight: 500;
+  height: 40px;
+  font-weight: 400;
+}
+.th { display: flex; align-items: center; gap: 4px; }
+.th.col-num { justify-content: flex-end; }
+.th.col-act { justify-content: flex-end; }
+.th:not(.col-fav):not(.col-spark):not(.col-range):not(.col-act)::after {
+  content: "↕"; opacity: .4; font-size: 10px;
 }
 .trow { border-bottom: 1px solid var(--line); cursor: pointer; transition: background .12s; }
 .trow:hover { background: var(--bg-2); }
