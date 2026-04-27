@@ -1055,20 +1055,22 @@ input { font-family: inherit; }
 .cmp-meta { padding: 0 0 8px; }
 .cmp-grid {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
+.cmp-grid.hidden { display: none; }
+.cmp-grid[data-cols="1"] { grid-template-columns: 1fr; }
 .cmp-grid[data-cols="2"] { grid-template-columns: repeat(2, 1fr); }
 .cmp-grid[data-cols="3"] { grid-template-columns: repeat(3, 1fr); }
-.cmp-grid[data-cols="4"] { grid-template-columns: repeat(4, 1fr); }
 
 .cmp-card {
   background: var(--bg-1);
   border: 1px solid var(--line);
   border-radius: var(--radius);
-  padding: 10px 12px 8px;
+  padding: 12px 14px 10px;
   position: relative;
   cursor: pointer;
   transition: border-color .12s;
+  display: flex; flex-direction: column;
 }
 .cmp-card:hover { border-color: var(--accent); }
 .cmp-card.miss { border-color: var(--dn); border-style: dashed; }
@@ -1089,7 +1091,9 @@ input { font-family: inherit; }
 }
 .cmp-card:hover .cmp-rm { opacity: 1; }
 .cmp-rm:hover { background: var(--dn-bg); color: var(--dn); }
-.cmp-chart { width: 100%; height: 110px; display: block; }
+.cmp-chart { width: 100%; height: 280px; display: block; flex: 1; }
+.cmp-grid[data-cols="1"] .cmp-chart { height: 360px; }
+.cmp-grid[data-cols="3"] .cmp-chart { height: 220px; }
 .cmp-meta-row {
   display: flex; gap: 12px;
   font-size: 11px; color: var(--text-3);
@@ -1110,6 +1114,52 @@ input { font-family: inherit; }
   padding: 5px 14px; font-size: 12px; font-weight: 600;
   margin: 8px 4px 0;
 }
+
+/* Overlay (single shared axis) */
+.cmp-overlay {
+  background: var(--bg-1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 14px 16px 12px;
+}
+.cmp-overlay.hidden { display: none; }
+.cmp-overlay-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 16px; margin-bottom: 10px; flex-wrap: wrap;
+}
+.cmp-overlay-svg {
+  width: 100%; height: 480px; display: block;
+}
+.cmp-overlay-svg .grid { stroke: var(--line); stroke-width: 1; stroke-dasharray: 2 4; }
+.cmp-overlay-svg .axis-label {
+  fill: var(--text-3); font-size: 10px;
+  font-family: var(--mono);
+}
+.cmp-overlay-svg .baseline { stroke: var(--line-2); stroke-width: 1; }
+.cmp-overlay-svg .series { fill: none; stroke-width: 1.6; }
+
+.cmp-legend {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  max-width: 60%;
+  justify-content: flex-end;
+}
+.lg-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-size: 11px;
+  cursor: pointer;
+  user-select: none;
+}
+.lg-chip .swatch {
+  width: 10px; height: 10px; border-radius: 2px;
+}
+.lg-chip .lg-pct { color: var(--text-3); font-family: var(--mono); }
+.lg-chip.off { opacity: .35; }
+.lg-chip.off .swatch { background: var(--text-3) !important; }
+.lg-chip:hover { border-color: var(--line-2); }
 
 /* Batch import dialog */
 .cmp-dialog {

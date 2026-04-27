@@ -550,6 +550,8 @@ function renderSimilarity() {
 let compareState = ["BTC", "ETH", "SOL", "BNB", "AVAX", "DOGE"];
 let compareNorm = false;
 let compareTf = "4h";
+let compareView = "grid";          // "grid" | "overlay"
+let compareHidden = new Set();     // overlay legend: hidden symbols
 
 function compareAdd(syms) {
   const validUpper = syms
@@ -630,10 +632,22 @@ function compareCard(sym) {
 
 function renderCompare() {
   const grid = document.querySelector('[data-rsection="compare"] .cmp-grid');
+  const overlay = document.querySelector('[data-rsection="compare"] .cmp-overlay');
   const meta = document.querySelector('[data-rsection="compare"] .cmp-meta');
   if (!grid) return;
 
+  // toggle visible container by view mode
+  if (compareView === "overlay") {
+    grid.classList.add("hidden");
+    overlay.classList.remove("hidden");
+  } else {
+    grid.classList.remove("hidden");
+    overlay.classList.add("hidden");
+  }
+
   if (!compareState.length) {
+    grid.classList.remove("hidden");
+    overlay.classList.add("hidden");
     grid.innerHTML = `
       <div class="cmp-empty">
         <div>对比池为空</div>
@@ -650,7 +664,14 @@ function renderCompare() {
     return;
   }
 
-  meta.textContent = `共 ${compareState.length} 个 · 周期 ${compareTf}${compareNorm ? " · 已归一化" : ""}`;
+  const visibleCount = compareState.filter((s) => !compareHidden.has(s)).length;
+  meta.textContent = `共 ${compareState.length} 个${compareView === "overlay" ? `（显示 ${visibleCount}）` : ""} · 周期 ${compareTf}${compareView === "overlay" ? " · 叠加视图（百分比变化）" : (compareNorm ? " · 已归一化" : "")}`;
+
+  if (compareView === "overlay") {
+    renderCompareOverlay();
+    return;
+  }
+
   grid.innerHTML = compareState.map(compareCard).join("");
   grid.querySelectorAll(".cmp-rm").forEach((b) =>
     b.addEventListener("click", (e) => {
@@ -663,17 +684,138 @@ function renderCompare() {
   );
 }
 
+// Build a synthetic price series for one symbol given current timeframe
+function compareSeries(s) {
+  const tfSeed = { "15m": 1, "1h": 3, "4h": 7, "1d": 11, "1w": 17 }[compareTf] || 7;
+  const r = rng(s.seed * tfSeed + 5);
+  const n = 80;
+  const drift = (s.chg / 100) * 0.7;
+  let v = s.price * 0.95;
+  const arr = [];
+  for (let i = 0; i < n; i++) {
+    v += (r() - 0.5 + drift / n) * s.price * 0.012;
+    arr.push(v);
+  }
+  return arr;
+}
+
+function renderCompareOverlay() {
+  const overlay = document.querySelector('[data-rsection="compare"] .cmp-overlay');
+  const svg = overlay.querySelector(".cmp-overlay-svg");
+  const legend = overlay.querySelector(".cmp-legend");
+
+  // Build series only for known + visible symbols
+  const symObjs = compareState
+    .map((sym) => SYMBOLS.find((x) => x.sym === sym))
+    .filter(Boolean);
+
+  if (!symObjs.length) {
+    svg.innerHTML = "";
+    legend.innerHTML = `<span class="muted small">没有可识别的 symbol</span>`;
+    return;
+  }
+
+  // Normalize each series to % change from its first point
+  const series = symObjs.map((s) => {
+    const arr = compareSeries(s);
+    const base = arr[0];
+    const pct = arr.map((v) => ((v - base) / base) * 100);
+    return { sym: s.sym, color: s.color, chg: s.chg, pct };
+  });
+
+  const visible = series.filter((sr) => !compareHidden.has(sr.sym));
+  // Compute Y range across visible series; pad
+  const allVals = visible.flatMap((sr) => sr.pct);
+  let yMin = visible.length ? Math.min(...allVals) : -10;
+  let yMax = visible.length ? Math.max(...allVals) :  10;
+  const span = yMax - yMin || 1;
+  yMin -= span * 0.08;
+  yMax += span * 0.08;
+
+  const W = 1000, H = 420;
+  const padL = 50, padR = 10, padT = 10, padB = 26;
+  const innerW = W - padL - padR;
+  const innerH = H - padT - padB;
+
+  const x = (i, n) => padL + (i / (n - 1)) * innerW;
+  const y = (v) => padT + ((yMax - v) / (yMax - yMin)) * innerH;
+
+  // Build grid + axis labels (5 horizontal lines)
+  let grid = "";
+  const ySteps = 5;
+  for (let k = 0; k <= ySteps; k++) {
+    const v = yMax - ((yMax - yMin) / ySteps) * k;
+    const yp = y(v);
+    grid += `<line class="grid" x1="${padL}" x2="${W - padR}" y1="${yp}" y2="${yp}"/>`;
+    grid += `<text class="axis-label" x="${padL - 6}" y="${yp + 3}" text-anchor="end">${v >= 0 ? "+" : ""}${v.toFixed(1)}%</text>`;
+  }
+  // X axis labels: start / mid / end (mock)
+  const xLabels = [
+    { i: 0,    label: compareTf === "1d" ? "30d 前" : compareTf === "1w" ? "20w 前" : "80 根前" },
+    { i: 0.5,  label: "中点" },
+    { i: 1,    label: "现在" },
+  ];
+  for (const x0 of xLabels) {
+    const xp = padL + x0.i * innerW;
+    grid += `<text class="axis-label" x="${xp}" y="${H - padB + 18}" text-anchor="middle">${x0.label}</text>`;
+  }
+  // Zero baseline
+  if (yMin <= 0 && yMax >= 0) {
+    const yz = y(0);
+    grid += `<line class="baseline" x1="${padL}" x2="${W - padR}" y1="${yz}" y2="${yz}"/>`;
+  }
+
+  // Series polylines
+  let lines = "";
+  for (const sr of visible) {
+    const pts = sr.pct.map((v, i) => `${x(i, sr.pct.length)},${y(v).toFixed(2)}`).join(" ");
+    lines += `<polyline class="series" points="${pts}" style="stroke:${sr.color}"/>`;
+  }
+
+  svg.innerHTML = grid + lines;
+
+  // Legend chips
+  legend.innerHTML = series.map((sr) => {
+    const last = sr.pct[sr.pct.length - 1];
+    const off = compareHidden.has(sr.sym) ? "off" : "";
+    return `
+      <span class="lg-chip ${off}" data-lg="${sr.sym}" title="点击隐藏/显示">
+        <span class="swatch" style="background:${sr.color}"></span>
+        <span>${sr.sym}</span>
+        <span class="lg-pct ${last >= 0 ? "up" : "dn"}">${last >= 0 ? "+" : ""}${last.toFixed(2)}%</span>
+        <span class="x" data-lg-rm="${sr.sym}" title="移除">×</span>
+      </span>`;
+  }).join("");
+  legend.querySelectorAll(".lg-chip").forEach((chip) => {
+    chip.addEventListener("click", (e) => {
+      if (e.target.dataset.lgRm) return;
+      const sym = chip.dataset.lg;
+      if (compareHidden.has(sym)) compareHidden.delete(sym);
+      else compareHidden.add(sym);
+      renderCompare();
+    });
+    const rm = chip.querySelector("[data-lg-rm]");
+    rm?.addEventListener("click", (e) => {
+      e.stopPropagation();
+      compareRemove(rm.dataset.lgRm);
+    });
+  });
+}
+
 // ----- Toolbar bindings -----
 function bindCompareToolbar() {
-  const sec = document.querySelector('[data-rsection="compare"]');
-  // timeframe chips
-  sec.querySelectorAll(".filters .chip").forEach((c) => {
-    if (["15m","1h","4h","1d","1w"].includes(c.textContent.trim())) {
-      c.addEventListener("click", () => {
-        compareTf = c.textContent.trim();
-        renderCompare();
-      });
-    }
+  const sec = document.querySelector('section[data-rsection="compare"]');
+  // timeframe chips: collect by text match, then bind exclusive active per group
+  const tfChips = [...sec.querySelectorAll(".filters > .chip")].filter((c) =>
+    ["15m","1h","4h","1d","1w"].includes(c.textContent.trim())
+  );
+  tfChips.forEach((c) => {
+    c.addEventListener("click", () => {
+      tfChips.forEach((x) => x.classList.remove("active"));
+      c.classList.add("active");
+      compareTf = c.textContent.trim();
+      renderCompare();
+    });
   });
   // grid density buttons
   sec.querySelectorAll(".cmp-cols").forEach((b) => {
@@ -681,6 +823,18 @@ function bindCompareToolbar() {
       sec.querySelectorAll(".cmp-cols").forEach((x) => x.classList.remove("active"));
       b.classList.add("active");
       sec.querySelector("div.cmp-grid").dataset.cols = b.dataset.cols;
+    });
+  });
+  // view mode buttons
+  sec.querySelectorAll(".cmp-view").forEach((b) => {
+    b.addEventListener("click", () => {
+      sec.querySelectorAll(".cmp-view").forEach((x) => x.classList.remove("active"));
+      b.classList.add("active");
+      compareView = b.dataset.view;
+      // hide column chips when in overlay mode
+      const colsHidden = compareView === "overlay";
+      sec.querySelectorAll(".cmp-cols").forEach((x) => x.style.display = colsHidden ? "none" : "");
+      renderCompare();
     });
   });
   // norm toggle
@@ -820,6 +974,8 @@ document.querySelectorAll(".rt-item").forEach((el) =>
 document.addEventListener("click", (e) => {
   const t = e.target.closest(".chip, .tf, .qchip, .kt-tab, .kp-tab, .kps-tab, .ko-tab, .om");
   if (!t) return;
+  // opt-out: chips that belong to multi-group toolbars manage their own active state
+  if (t.dataset.noAutoActive || t.closest("[data-no-auto-active]")) return;
   const group = t.parentElement;
   group.querySelectorAll(t.matches(".chip") ? ".chip"
     : t.matches(".tf") ? ".tf"

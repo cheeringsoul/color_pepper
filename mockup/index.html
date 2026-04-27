@@ -229,7 +229,7 @@
       <!-- Compare -->
       <section class="rsection hidden" data-rsection="compare">
         <div class="view-head">
-          <div class="filters">
+          <div class="filters" data-no-auto-active="1">
             <span class="muted small">周期：</span>
             <button class="chip">15m</button>
             <button class="chip">1h</button>
@@ -237,10 +237,14 @@
             <button class="chip">1d</button>
             <button class="chip">1w</button>
             <span class="sep"></span>
-            <span class="muted small">网格：</span>
-            <button class="chip cmp-cols" data-cols="2">2 列</button>
-            <button class="chip cmp-cols active" data-cols="3">3 列</button>
-            <button class="chip cmp-cols" data-cols="4">4 列</button>
+            <span class="muted small">视图：</span>
+            <button class="chip cmp-view active" data-view="grid">网格</button>
+            <button class="chip cmp-view" data-view="overlay">叠加</button>
+            <span class="sep"></span>
+            <span class="muted small">列：</span>
+            <button class="chip cmp-cols" data-cols="1">1</button>
+            <button class="chip cmp-cols active" data-cols="2">2</button>
+            <button class="chip cmp-cols" data-cols="3">3</button>
             <span class="sep"></span>
             <button class="chip" id="cmp-norm">归一化</button>
             <span class="grow"></span>
@@ -250,7 +254,14 @@
           </div>
         </div>
         <div class="cmp-meta muted small"></div>
-        <div class="cmp-grid" data-cols="3"></div>
+        <div class="cmp-grid" data-cols="2"></div>
+        <div class="cmp-overlay hidden">
+          <div class="cmp-overlay-head">
+            <div class="card-title">叠加对比 <span class="muted small">归一化为相对起点的百分比变化</span></div>
+            <div class="cmp-legend"></div>
+          </div>
+          <svg class="cmp-overlay-svg" viewBox="0 0 1000 420" preserveAspectRatio="none"></svg>
+        </div>
       </section>
     </main>
 
