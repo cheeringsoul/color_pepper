@@ -1,8 +1,8 @@
 /* ===== Tokens ===== */
 * { box-sizing: border-box; }
 :root {
-  --bg-0: #0e1218;       /* unified canvas — body, pages, sidebars, cards all share this */
-  --bg-1: #0e1218;       /* (kept as alias so existing rules keep working) */
+  --bg-0: #101218;       /* unified canvas — body, pages, sidebars, cards all share this */
+  --bg-1: #101218;       /* (kept as alias so existing rules keep working) */
   --bg-2: #161b25;       /* slightly lighter — for input/control backgrounds */
   --bg-3: #1c2230;       /* hover / pressed control */
   --bg-4: #232a39;       /* active filled control */
