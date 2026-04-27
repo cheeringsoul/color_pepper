@@ -598,18 +598,18 @@ document.addEventListener("click", (e) => {
 // ===== Theme switching =====
 function applyTheme(name) {
   const root = document.documentElement;
-  if (name === "light") root.dataset.theme = "light";
-  else delete root.dataset.theme;
+  if (name === "cyber" || !name) delete root.dataset.theme;
+  else root.dataset.theme = name;
   document.querySelectorAll(".tt-btn").forEach((b) =>
-    b.classList.toggle("active", b.dataset.themeSet === name)
+    b.classList.toggle("active", b.dataset.themeSet === (name || "cyber"))
   );
-  try { localStorage.setItem("cp.theme", name); } catch {}
+  try { localStorage.setItem("cp.theme", name || "cyber"); } catch {}
 }
 document.querySelectorAll(".tt-btn").forEach((b) =>
   b.addEventListener("click", () => applyTheme(b.dataset.themeSet))
 );
 const savedTheme = (() => { try { return localStorage.getItem("cp.theme"); } catch { return null; } })();
-if (savedTheme === "light") applyTheme("light");
+if (savedTheme && savedTheme !== "cyber") applyTheme(savedTheme);
 
 renderSectorTabs();
 renderSymbolsTable("All");
