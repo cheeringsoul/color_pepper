@@ -413,6 +413,50 @@
       </aside>
     </main>
 
+    <!-- Mini K-line popover -->
+    <div class="mini-kline hidden" data-mk>
+      <div class="mk-head">
+        <div class="mk-title">
+          <span class="sym-bubble mk-bubble"></span>
+          <div>
+            <div class="mk-name"></div>
+            <div class="mk-sub muted small"></div>
+          </div>
+        </div>
+        <button class="mk-close" title="关闭">×</button>
+      </div>
+      <div class="mk-stats">
+        <div class="mk-price"></div>
+        <div class="mk-chg"></div>
+        <div class="grow"></div>
+        <div class="mk-meta">
+          <span class="muted small">24h 高</span><span class="mk-hi"></span>
+        </div>
+        <div class="mk-meta">
+          <span class="muted small">24h 低</span><span class="mk-lo"></span>
+        </div>
+      </div>
+      <div class="mk-tf">
+        <button class="mk-tf-btn">15m</button>
+        <button class="mk-tf-btn">1h</button>
+        <button class="mk-tf-btn active">4h</button>
+        <button class="mk-tf-btn">1d</button>
+      </div>
+      <div class="mk-chart">
+        <svg viewBox="0 0 400 160" preserveAspectRatio="none" class="chart-svg">
+          <g stroke="#1d2330" stroke-width="1">
+            <line x1="0" y1="40" x2="400" y2="40" />
+            <line x1="0" y1="80" x2="400" y2="80" />
+            <line x1="0" y1="120" x2="400" y2="120" />
+          </g>
+          <g class="mk-candles"></g>
+        </svg>
+      </div>
+      <div class="mk-foot">
+        <button class="mk-goto">查看完整 K 线 →</button>
+      </div>
+    </div>
+
     <footer class="statusbar">
       <span class="dot up"></span><span class="muted">行情已连接 · Binance · 延迟</span> <span>42ms</span>
       <span class="grow"></span>

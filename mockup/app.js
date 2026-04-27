@@ -347,7 +347,10 @@ function renderRotation() {
     </div>
   `).join("");
   heat.querySelectorAll(".hm-cell").forEach((c) =>
-    c.addEventListener("click", () => openKline(c.dataset.sym))
+    c.addEventListener("click", (e) => {
+      e.stopPropagation();
+      showMiniKline(c.dataset.sym, c);
+    })
   );
 
   const bars = document.querySelector('[data-rsection="rotation"] .sector-bars');
@@ -379,9 +382,130 @@ function renderRotation() {
   document.querySelector('.rank-list[data-side="up"]').innerHTML = renderRank(upList, "up");
   document.querySelector('.rank-list[data-side="dn"]').innerHTML = renderRank(dnList, "dn");
 
-  document.querySelectorAll('[data-rsection="rotation"] .rank-row, [data-rsection="rotation"] .hm-cell')
+  document.querySelectorAll('[data-rsection="rotation"] .rank-row')
     .forEach((el) => el.addEventListener("click", () => openKline(el.dataset.sym)));
 }
+
+// ===== Mini K-line popover =====
+function renderMiniCandles(s, tf = "4h") {
+  const tfSeed = { "15m": 1, "1h": 3, "4h": 7, "1d": 11 }[tf] || 7;
+  const r = rng(s.seed * tfSeed + 5);
+  const n = 50;
+  let price = s.price * 0.95;
+  const candles = [];
+  for (let i = 0; i < n; i++) {
+    const open = price;
+    const driftBias = (s.chg / 100) * 0.5;
+    const change = (r() - 0.5 + driftBias / n) * s.price * 0.013;
+    const close = open + change;
+    const hi = Math.max(open, close) + r() * s.price * 0.005;
+    const lo = Math.min(open, close) - r() * s.price * 0.005;
+    candles.push({ open, close, high: hi, low: lo });
+    price = close;
+  }
+  const min = Math.min(...candles.map((c) => c.low));
+  const max = Math.max(...candles.map((c) => c.high));
+  const w = 400, h = 160, cw = w / n;
+  const y = (p) => ((max - p) / (max - min)) * (h - 16) + 8;
+  return candles.map((c, i) => {
+    const x = i * cw + cw / 2;
+    const up = c.close >= c.open;
+    const color = up ? "#2bd07a" : "#ff5b6e";
+    const b1 = y(Math.max(c.open, c.close));
+    const b2 = y(Math.min(c.open, c.close));
+    return `<line x1="${x}" x2="${x}" y1="${y(c.high)}" y2="${y(c.low)}" stroke="${color}" stroke-width="1"/>
+            <rect x="${i * cw + 1}" y="${b1}" width="${Math.max(1, cw - 2)}" height="${Math.max(1, b2 - b1)}" fill="${color}"/>`;
+  }).join("");
+}
+
+let miniState = { sym: null, tf: "4h" };
+
+function showMiniKline(symKey, anchorEl) {
+  const s = SYMBOLS.find((x) => x.sym === symKey);
+  if (!s) return;
+  miniState = { sym: symKey, tf: miniState.tf };
+
+  const panel = document.querySelector(".mini-kline");
+  const upDn = s.chg >= 0 ? "up" : "dn";
+
+  panel.querySelector(".mk-bubble").style.background = s.color;
+  panel.querySelector(".mk-bubble").textContent = s.sym[0];
+  panel.querySelector(".mk-name").textContent = `${s.sym}/${s.pair}`;
+  panel.querySelector(".mk-sub").textContent = s.name;
+
+  const priceEl = panel.querySelector(".mk-price");
+  priceEl.textContent = fmtPx(s.price);
+  priceEl.className = "mk-price " + upDn;
+
+  const chgEl = panel.querySelector(".mk-chg");
+  chgEl.textContent = `${s.chg >= 0 ? "+" : ""}${s.chg.toFixed(2)}%`;
+  chgEl.className = "mk-chg " + upDn;
+
+  panel.querySelector(".mk-hi").textContent = fmtPx(s.high);
+  panel.querySelector(".mk-lo").textContent = fmtPx(s.low);
+
+  panel.querySelector(".mk-candles").innerHTML = renderMiniCandles(s, miniState.tf);
+
+  // position near anchor
+  panel.classList.remove("hidden");
+  const rect = anchorEl.getBoundingClientRect();
+  const pw = panel.offsetWidth;
+  const ph = panel.offsetHeight;
+  const margin = 8;
+  let left = rect.left + rect.width / 2 - pw / 2;
+  let top = rect.bottom + 10;
+  // clamp horizontally
+  left = Math.max(margin, Math.min(left, window.innerWidth - pw - margin));
+  // flip up if no room below
+  if (top + ph > window.innerHeight - margin) {
+    top = rect.top - ph - 10;
+    panel.classList.add("flip-up");
+  } else {
+    panel.classList.remove("flip-up");
+  }
+  // arrow x position relative to panel
+  const arrowX = Math.max(12, Math.min(pw - 24, rect.left + rect.width / 2 - left - 6));
+  panel.style.setProperty("--mk-arrow", `${arrowX}px`);
+  panel.style.left = `${left}px`;
+  panel.style.top = `${top}px`;
+}
+
+function hideMiniKline() {
+  document.querySelector(".mini-kline").classList.add("hidden");
+}
+
+document.querySelector(".mk-close").addEventListener("click", hideMiniKline);
+
+document.querySelector(".mini-kline").addEventListener("click", (e) => e.stopPropagation());
+
+document.addEventListener("click", (e) => {
+  if (document.querySelector(".mini-kline").classList.contains("hidden")) return;
+  if (e.target.closest(".hm-cell")) return;
+  hideMiniKline();
+});
+
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") hideMiniKline();
+});
+
+document.querySelectorAll(".mk-tf-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".mk-tf-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    miniState.tf = btn.textContent.trim();
+    if (miniState.sym) {
+      const s = SYMBOLS.find((x) => x.sym === miniState.sym);
+      document.querySelector(".mk-candles").innerHTML = renderMiniCandles(s, miniState.tf);
+    }
+  });
+});
+
+document.querySelector(".mk-goto").addEventListener("click", () => {
+  if (miniState.sym) {
+    hideMiniKline();
+    openKline(miniState.sym);
+  }
+});
 
 function renderSimilarity() {
   const grid = document.querySelector('[data-rsection="similarity"] .similar-grid');
