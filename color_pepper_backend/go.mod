@@ -4,6 +4,10 @@ go 1.24.4
 
 require (
 	github.com/ccxt/ccxt/go/v4 v4.5.51
+	github.com/gorilla/websocket v1.4.2
+)
+
+require (
 	github.com/ProjectZKM/Ziren/crates/go-runtime/zkvm_runtime v0.0.0-20251001021608-1fe7b43fc4d6 // indirect
 	github.com/bits-and-blooms/bitset v1.20.0 // indirect
 	github.com/consensys/gnark-crypto v0.18.1 // indirect
@@ -14,7 +18,6 @@ require (
 	github.com/ethereum/c-kzg-4844/v2 v2.1.5 // indirect
 	github.com/ethereum/go-ethereum v1.17.0 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/supranational/blst v0.3.16-0.20250831170142-f48500c1fdbe // indirect

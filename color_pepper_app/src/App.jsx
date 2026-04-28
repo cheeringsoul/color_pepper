@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import api from './api';
 import HomePage from './pages/HomePage';
 import KlinePage from './pages/KlinePage';
@@ -6,16 +6,53 @@ import RotationPage from './pages/RotationPage';
 import SimilarityPage from './pages/SimilarityPage';
 import AgentPage from './pages/AgentPage';
 
+const WS_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/^http/, 'ws');
+
 export default function App() {
   const [page, setPage] = useState('home');
   const [currentSym, setCurrentSym] = useState('BTC');
   const [symbols, setSymbols] = useState([]);
   const [favorites, setFavorites] = useState(new Set(['BTC', 'ETH', 'SOL']));
   const [toast, setToast] = useState(null);
+  const symbolsRef = useRef(symbols);
+  symbolsRef.current = symbols;
 
   useEffect(() => {
     api.getSymbols().then(setSymbols);
   }, []);
+
+  const applyTicker = useCallback((msg) => {
+    setSymbols(prev => prev.map(s =>
+      s.sym === msg.sym
+        ? { ...s, price: msg.price, chg: msg.chg, high24h: msg.high24h, low24h: msg.low24h, vol: msg.vol }
+        : s
+    ));
+  }, []);
+
+  useEffect(() => {
+    if (!WS_BASE) return;
+    let ws;
+    let reconnectTimer;
+
+    function connect() {
+      ws = new WebSocket(`${WS_BASE}/ws/tickers`);
+      ws.onmessage = (e) => {
+        try {
+          applyTicker(JSON.parse(e.data));
+        } catch {}
+      };
+      ws.onclose = () => {
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+      ws.onerror = () => ws.close();
+    }
+
+    connect();
+    return () => {
+      clearTimeout(reconnectTimer);
+      if (ws) ws.close();
+    };
+  }, [applyTicker]);
 
   function toggleFav(sym) {
     setFavorites((prev) => {

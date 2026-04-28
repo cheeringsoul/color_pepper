@@ -12,6 +12,9 @@ var exMgr *ExchangeManager
 func main() {
 	exMgr = NewExchangeManager()
 
+	wsHub := NewWSHub()
+	wsHub.StartWatching()
+
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("GET /api/market/overview", handleMarketOverview)
@@ -26,6 +29,7 @@ func main() {
 	mux.HandleFunc("GET /api/similarity", handleSimilarity)
 	mux.HandleFunc("POST /api/agent/chat", handleAgentChat)
 	mux.HandleFunc("GET /api/agent/alerts", handleAgentAlerts)
+	mux.HandleFunc("/ws/tickers", wsHub.HandleWS)
 
 	handler := corsMiddleware(mux)
 
@@ -48,7 +52,10 @@ func corsMiddleware(next http.Handler) http.Handler {
 
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(v)
+	err := json.NewEncoder(w).Encode(v)
+	if err != nil {
+		return
+	}
 }
 
 func queryInt(r *http.Request, key string, def int) int {
