@@ -155,18 +155,24 @@ export async function getSparkline(symbol, points = 30) {
 }
 
 export async function getSectorRotation(period = '7d') {
-  const days = 7;
-  const rng = mulberry32(42);
+  const dayCount = period === '30d' ? 30 : period === '14d' ? 14 : 7;
+  const rng = mulberry32(42 + dayCount);
+  const now = new Date();
+  const dates = [];
+  for (let i = dayCount - 1; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 86400000);
+    dates.push(`${d.getMonth() + 1}/${d.getDate()}`);
+  }
   const heatmap = SECTORS.map((sec) => {
     const cells = [];
     let trend = (rng() - 0.5) * 2;
-    for (let d = 0; d < days; d++) {
+    for (let d = 0; d < dayCount; d++) {
       trend = trend * 0.7 + (rng() - 0.5) * 6;
       cells.push(+trend.toFixed(2));
     }
     return { sector: sec, cells };
   });
-  return { sectors: SECTORS, heatmap };
+  return { sectors: SECTORS, heatmap, dates };
 }
 
 export async function getBtcKlines(period = '30d') {
@@ -295,8 +301,36 @@ export async function getRotationAnalysis(period = '30d') {
     count: SYMBOLS.filter((s) => s.sector === sec).length,
   })).sort((a, b) => b.contribution - a.contribution);
 
+  const btcNorm = btcLine.map((v) => ((v / btcLine[0]) - 1) * 100);
+
+  const sectorLines = {};
+  SECTORS.forEach((sec) => {
+    const symsInSector = SYMBOLS.filter((s) => s.sector === sec);
+    const totalSectorMcap = symsInSector.reduce((sum, s) => sum + s.mcap, 0);
+    const line = [];
+    for (let t = 0; t < N; t++) {
+      let weighted = 0;
+      symsInSector.forEach((sym) => {
+        weighted += (sym.mcap / totalSectorMcap) * (series[sym.sym][t] - 1) * 100;
+      });
+      line.push(+weighted.toFixed(3));
+    }
+    sectorLines[sec] = line;
+  });
+
+  const days = period === '7d' ? 7 : period === '14d' ? 14 : 30;
+  const now = Date.now();
+  const dates = [];
+  for (let t = 0; t < N; t++) {
+    const d = new Date(now - days * (1 - t / (N - 1)) * 86400000);
+    dates.push(`${d.getMonth() + 1}/${d.getDate()}`);
+  }
+
   return {
     btcLine,
+    btcNorm: btcNorm.map((v) => +v.toFixed(3)),
+    sectorLines,
+    dates,
     annotations,
     sectorStats,
     sectors: SECTORS,

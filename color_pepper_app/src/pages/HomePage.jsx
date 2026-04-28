@@ -1,139 +1,17 @@
-import { useState, useMemo, useEffect, Fragment } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import api from '../api';
 import Sparkline from '../components/Sparkline';
 import { fmtPrice } from '../utils';
-import { generateSpark } from '../api/mock';
-
-function SectorRotationTimeline({ rotation }) {
-  const days = useMemo(() => {
-    const out = [];
-    const today = new Date('2026-04-27');
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(today.getDate() - i);
-      out.push(`${d.getMonth() + 1}/${d.getDate()}`);
-    }
-    return out;
-  }, []);
-
-  function colorFor(v) {
-    const max = 8;
-    const t = Math.max(-1, Math.min(1, v / max));
-    if (t >= 0) {
-      const a = 0.30 + t * 0.65;
-      return `rgba(45,212,164,${a})`;
-    } else {
-      const a = 0.30 + (-t) * 0.65;
-      return `rgba(244,113,113,${a})`;
-    }
-  }
-
-  return (
-    <div className="card rotation-tl">
-      <div className="tl-head">
-        <div>
-          <div className="card-title">板块轮动 · 7日时间轴</div>
-          <div className="card-sub">每格代表板块当日相对大盘的强弱 · 可观察资金切换轨迹</div>
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button className="chip">7d</button>
-          <button className="chip active">14d</button>
-          <button className="chip">30d</button>
-        </div>
-      </div>
-
-      <div className="tl-grid">
-        <div></div>
-        {days.map(d => <div key={d} className="col-label">{d}</div>)}
-        {rotation.map(r => (
-          <Fragment key={r.sector}>
-            <div className="row-label">{r.sector}</div>
-            {r.cells.map((v, i) => (
-              <div key={i} className="tl-cell" style={{ background: colorFor(v) }}>
-                <span className="pct">{v >= 0 ? '+' : ''}{v.toFixed(1)}</span>
-              </div>
-            ))}
-          </Fragment>
-        ))}
-      </div>
-
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, fontSize: 11, color: 'var(--text-3)' }}>
-        <span>弱</span>
-        <div style={{ display: 'flex', height: 10, width: 180, borderRadius: 3, overflow: 'hidden' }}>
-          {[-8,-5,-3,-1,0,1,3,5,8].map((v,i) => (
-            <div key={i} style={{ flex: 1, background: colorFor(v) }} />
-          ))}
-        </div>
-        <span>强</span>
-        <span style={{ marginLeft: 'auto' }}>近 3 日热点：<span style={{ color: 'var(--up)', fontWeight: 600 }}>Meme</span> · <span style={{ color: 'var(--up)', fontWeight: 600 }}>AI</span></span>
-      </div>
-    </div>
-  );
-}
-
-function TopMovers({ movers, tab, setTab, onOpen }) {
-  return (
-    <div className="card" style={{ padding: '18px 4px 12px 4px' }}>
-      <div style={{ padding: '0 18px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div className="card-title">领涨 / 领跌</div>
-          <div className="card-sub">点击进入 K 线详情</div>
-        </div>
-        <div className="toggle-group" style={{ padding: 2 }}>
-          <button className={`tg-item ${tab === 'gain' ? 'active' : ''}`} onClick={() => setTab('gain')}>领涨</button>
-          <button className={`tg-item ${tab === 'loss' ? 'active' : ''}`} onClick={() => setTab('loss')}>领跌</button>
-          <button className={`tg-item ${tab === 'vol' ? 'active' : ''}`} onClick={() => setTab('vol')}>成交</button>
-        </div>
-      </div>
-
-      <div className="movers">
-        {movers.map((s, i) => {
-          const trend = s.chg / 4;
-          const spark = generateSpark(s.sym.charCodeAt(0) * 7 + i, 24, trend);
-          return (
-            <div key={s.sym} className="mover-row" onClick={() => onOpen(s.sym)}>
-              <div className="rank">#{i + 1}</div>
-              <div className="sym-bubble sm" style={{ background: s.color }}>{s.sym[0]}</div>
-              <div className="name">
-                {s.sym}<span className="quote" style={{ color: 'var(--text-3)', fontWeight: 400, fontSize: 11 }}> /USDT</span>
-                <span className="sub">{s.sector}</span>
-              </div>
-              <div className="price">${fmtPrice(s.price)}</div>
-              <div className="spark">
-                <Sparkline data={spark} color={s.chg >= 0 ? 'var(--up)' : 'var(--dn)'} fill width={80} height={24} />
-              </div>
-              <div style={{ textAlign: 'right' }}>
-                <span className={`pill lg ${s.chg >= 0 ? 'up' : 'dn'}`}>
-                  {s.chg >= 0 ? '+' : ''}{s.chg.toFixed(2)}%
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
 
 export default function HomePage({ symbols, onOpenSymbol }) {
   const [tab, setTab] = useState('all');
   const [favorites, setFavorites] = useState(new Set(['BTC', 'ETH', 'SOL']));
-  const [moversTab, setMoversTab] = useState('gain');
   const [overview, setOverview] = useState(null);
-  const [rotation, setRotation] = useState([]);
+  const [sparklines, setSparklines] = useState({});
 
   useEffect(() => {
     api.getMarketOverview().then(setOverview);
-    api.getSectorRotation().then(data => setRotation(data.heatmap));
   }, []);
-
-  function toggleFav(sym) {
-    setFavorites(prev => {
-      const next = new Set(prev);
-      if (next.has(sym)) next.delete(sym); else next.add(sym);
-      return next;
-    });
-  }
 
   const filtered = useMemo(() => {
     if (tab === 'fav') return symbols.filter(s => favorites.has(s.sym));
@@ -142,11 +20,30 @@ export default function HomePage({ symbols, onOpenSymbol }) {
     return symbols;
   }, [tab, favorites, symbols]);
 
-  const movers = useMemo(() => {
-    if (moversTab === 'gain') return [...symbols].sort((a, b) => b.chg - a.chg).slice(0, 6);
-    if (moversTab === 'loss') return [...symbols].sort((a, b) => a.chg - b.chg).slice(0, 6);
-    return [...symbols].sort((a, b) => b.vol - a.vol).slice(0, 6);
-  }, [moversTab, symbols]);
+  const visible = useMemo(() => filtered.slice(0, 12), [filtered]);
+
+  useEffect(() => {
+    if (visible.length === 0) return;
+    const toFetch = visible.filter(s => !sparklines[s.sym]);
+    if (toFetch.length === 0) return;
+    Promise.all(
+      toFetch.map(s => api.getSparkline(s.sym, 30).then(data => [s.sym, data]))
+    ).then(results => {
+      setSparklines(prev => {
+        const next = { ...prev };
+        for (const [sym, data] of results) next[sym] = data;
+        return next;
+      });
+    });
+  }, [visible]);
+
+  function toggleFav(sym) {
+    setFavorites(prev => {
+      const next = new Set(prev);
+      if (next.has(sym)) next.delete(sym); else next.add(sym);
+      return next;
+    });
+  }
 
   return (
     <div className="page home">
@@ -192,11 +89,6 @@ export default function HomePage({ symbols, onOpenSymbol }) {
         </div>
       </div>
 
-      <div className="home-grid">
-        <SectorRotationTimeline rotation={rotation} />
-        <TopMovers movers={movers} tab={moversTab} setTab={setMoversTab} onOpen={onOpenSymbol} />
-      </div>
-
       <div className="card market-card">
         <div className="market-toolbar">
           <div className="toggle-group">
@@ -219,11 +111,12 @@ export default function HomePage({ symbols, onOpenSymbol }) {
             <div className="right">市值</div>
             <div className="right">操作</div>
           </div>
-          {filtered.slice(0, 12).map(s => {
-            const lo = s.price * 0.96, hi = s.price * 1.04;
-            const markerPct = ((s.price - lo) / (hi - lo)) * 100;
-            const trend = s.chg / 5;
-            const spark = generateSpark(s.sym.charCodeAt(0) + s.sym.charCodeAt(1), 30, trend);
+          {visible.map(s => {
+            const lo = s.low24h || s.price * 0.96;
+            const hi = s.high24h || s.price * 1.04;
+            const range = hi - lo || 1;
+            const markerPct = Math.max(0, Math.min(100, ((s.price - lo) / range) * 100));
+            const spark = sparklines[s.sym] || [];
             return (
               <div key={s.sym} className="mkt-trow" onClick={() => onOpenSymbol(s.sym)}>
                 <button className={`fav-btn ${favorites.has(s.sym) ? 'on' : ''}`}
@@ -244,7 +137,9 @@ export default function HomePage({ symbols, onOpenSymbol }) {
                   </span>
                 </div>
                 <div style={{ height: 32 }}>
-                  <Sparkline data={spark} color={s.chg >= 0 ? 'var(--up)' : 'var(--dn)'} fill />
+                  {spark.length > 0 && (
+                    <Sparkline data={spark} color={s.chg >= 0 ? 'var(--up)' : 'var(--dn)'} fill />
+                  )}
                 </div>
                 <div>
                   <div className="range-bar">

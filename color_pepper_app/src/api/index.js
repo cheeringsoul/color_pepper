@@ -11,6 +11,17 @@ async function fetchJSON(path, params = {}) {
   return res.json();
 }
 
+async function postJSON(path, body) {
+  const url = `${BASE_URL}${path}`;
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`API error: ${res.status}`);
+  return res.json();
+}
+
 const api = {
   async getMarketOverview() {
     if (USE_MOCK) return mock.getMarketOverview();
@@ -64,10 +75,7 @@ const api = {
 
   async sendAgentMessage(message, context = {}) {
     if (USE_MOCK) return mock.sendAgentMessage(message, context);
-    return fetchJSON('/api/agent/chat', {
-      method: 'POST',
-      body: JSON.stringify({ message, context }),
-    });
+    return postJSON('/api/agent/chat', { message, context });
   },
 
   async getAgentAlerts() {

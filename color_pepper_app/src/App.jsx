@@ -41,8 +41,10 @@ export default function App() {
     setTimeout(() => setToast(null), 2500);
   }
 
+  const isResearch = page === 'rotation' || page === 'similarity';
+
   return (
-    <div className="app">
+    <div className={`app${isResearch ? ' has-subnav' : ''}`}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-logo"></div>
@@ -52,9 +54,8 @@ export default function App() {
         </div>
         <nav className="primary-nav">
           <button className={`pn-item ${page === 'home' ? 'active' : ''}`} onClick={() => setPage('home')}>市场</button>
-          <button className={`pn-item ${page === 'rotation' ? 'active' : ''}`} onClick={() => setPage('rotation')}>轮动</button>
-          <button className={`pn-item ${page === 'kline' ? 'active' : ''}`} onClick={() => setPage('kline')}>K线</button>
-          <button className={`pn-item ${page === 'similarity' ? 'active' : ''}`} onClick={() => setPage('similarity')}>走势相似</button>
+          <button className={`pn-item ${page === 'kline' ? 'active' : ''}`} onClick={() => setPage('kline')}>行情</button>
+          <button className={`pn-item ${isResearch ? 'active' : ''}`} onClick={() => setPage(isResearch ? page : 'rotation')}>研究</button>
           <button className={`pn-item ${page === 'agent' ? 'active' : ''}`} onClick={() => setPage('agent')}>Agent</button>
         </nav>
         <div className="search">
@@ -71,6 +72,13 @@ export default function App() {
           <div className="avatar">A</div>
         </div>
       </header>
+
+      {isResearch && (
+        <nav className="subnav">
+          <button className={`sn-item${page === 'rotation' ? ' active' : ''}`} onClick={() => setPage('rotation')}>板块轮动</button>
+          <button className={`sn-item${page === 'similarity' ? ' active' : ''}`} onClick={() => setPage('similarity')}>走势相似</button>
+        </nav>
+      )}
 
       {page === 'home' && <HomePage symbols={symbols} onOpenSymbol={openSymbol} />}
       {page === 'rotation' && <RotationPage symbols={symbols} onOpenSymbol={openSymbol} />}
