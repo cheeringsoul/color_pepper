@@ -8,7 +8,8 @@ const SECTOR_COLORS = {
   'Solana': '#9945ff', '支付': '#38bdf8',
 };
 
-const W = 1000, H = 440, padL = 60, padR = 60, padT = 30, padB = 30;
+const W = 1000, H = 440;
+const padL = 8, padR = 56, padT = 36, padB = 24;
 const N = 120;
 
 const chartW = W - padL - padR;
@@ -18,7 +19,7 @@ function buildXLabels(period) {
   const now = new Date();
   const days = period === '7d' ? 7 : period === '14d' ? 14 : 30;
   const labels = [];
-  const count = 5;
+  const count = 6;
   for (let i = 0; i <= count; i++) {
     const d = new Date(now.getTime() - (days - (days * i) / count) * 86400000);
     labels.push({
@@ -27,6 +28,12 @@ function buildXLabels(period) {
     });
   }
   return labels;
+}
+
+function estimateTagWidth(text) {
+  let w = 14;
+  for (const ch of text) w += ch.charCodeAt(0) > 255 ? 10 : 6;
+  return w;
 }
 
 export default function RotationPage({ symbols, onOpenSymbol }) {
@@ -48,8 +55,8 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
     const min = Math.min(...btcLine);
     const max = Math.max(...btcLine);
     const range = max - min || 1;
-    const yMin = min - range * 0.05;
-    const yMax = max + range * 0.05;
+    const yMin = min - range * 0.08;
+    const yMax = max + range * 0.08;
     const yRange = yMax - yMin;
 
     const toX = (i) => padL + (i / (N - 1)) * chartW;
@@ -64,7 +71,6 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
     const lastPrice = btcLine[btcLine.length - 1];
     const lastY = toY(lastPrice);
 
-    // Y-axis ticks
     const yTicks = [];
     const tickCount = 5;
     for (let i = 0; i <= tickCount; i++) {
@@ -72,15 +78,27 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
       yTicks.push({ y: toY(v), label: `$${(v / 1000).toFixed(1)}K` });
     }
 
-    // Annotation positions
-    const annPos = annotations.map((ann) => ({
-      ...ann,
-      cx: toX(ann.t),
-      cy: toY(ann.value),
-      color: SECTOR_COLORS[ann.sector] || '#888',
-    }));
+    const annPos = annotations.map((ann) => {
+      const syms = ann.topSymbols || [];
+      const label = `${ann.isUp ? '▲' : '▼'} ${syms.join(' ')}`;
+      const tw = estimateTagWidth(label);
+      const th = 20;
+      const gap = 6;
+      const cx = toX(ann.t);
+      const cy = toY(ann.value);
+      const above = ann.isUp;
+      const tagY = above ? cy - gap - th : cy + gap;
+      const tagX = Math.max(padL + tw / 2, Math.min(W - padR - tw / 2, cx));
+      return {
+        ...ann,
+        cx, cy, label, tw, th, tagX, tagY,
+        color: ann.isUp ? '#2dd4a4' : '#f47171',
+        bgColor: ann.isUp ? 'rgba(45,212,164,0.12)' : 'rgba(244,113,113,0.12)',
+        borderColor: ann.isUp ? 'rgba(45,212,164,0.35)' : 'rgba(244,113,113,0.35)',
+      };
+    });
 
-    return { points, areaPoints, lastPrice, lastY, yTicks, annPos, yMin, yMax };
+    return { points, areaPoints, lastPrice, lastY, yTicks, annPos };
   }, [data]);
 
   const xLabels = useMemo(() => buildXLabels(period), [period]);
@@ -113,7 +131,6 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
         </div>
       </div>
 
-      {/* KPI row */}
       <div className="kpi-row">
         <div className="kpi">
           <span className="kpi-label">BTC 价格</span>
@@ -143,7 +160,6 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
         </div>
       </div>
 
-      {/* Chart card */}
       <div className="rot-chart-card">
         <div className="card-head">
           <span className="card-title">BTC 价格 & 板块轮动标注</span>
@@ -153,19 +169,19 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
         <svg className="rot-chart-svg" viewBox={`0 0 ${W} ${H}`}>
           <defs>
             <linearGradient id="rot-grad" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#6ea8ff" stopOpacity="0.25" />
-              <stop offset="100%" stopColor="#6ea8ff" stopOpacity="0.01" />
+              <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.15" />
+              <stop offset="100%" stopColor="var(--accent)" stopOpacity="0.01" />
             </linearGradient>
           </defs>
 
-          {/* Grid lines & Y-axis labels */}
+          {/* Grid lines */}
           {chart.yTicks.map((t, i) => (
             <g key={i}>
               <line
                 x1={padL} y1={t.y} x2={W - padR} y2={t.y}
-                stroke="#1e293b" strokeDasharray="4,3"
+                stroke="var(--line)" strokeDasharray="3 5"
               />
-              <text x={padL - 8} y={t.y + 4} textAnchor="end" fill="#64748b" fontSize="11">
+              <text x={padL + 6} y={t.y - 4} textAnchor="start" fill="var(--text-3)" fontSize="10" fontFamily="var(--mono)">
                 {t.label}
               </text>
             </g>
@@ -173,7 +189,7 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
 
           {/* X-axis labels */}
           {xLabels.map((l, i) => (
-            <text key={i} x={l.x} y={H - 4} textAnchor="middle" fill="#64748b" fontSize="11">
+            <text key={i} x={l.x} y={H - 4} textAnchor="middle" fill="var(--text-3)" fontSize="10" fontFamily="var(--mono)">
               {l.text}
             </text>
           ))}
@@ -184,41 +200,58 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
           {/* Price line */}
           <polyline
             points={chart.points}
-            fill="none" stroke="#6ea8ff" strokeWidth="2"
+            fill="none" stroke="var(--accent)" strokeWidth="2" strokeLinejoin="round"
           />
 
-          {/* Annotations */}
+          {/* Annotations — inline labels on the line */}
           {chart.annPos.map((ann, i) => (
             <g key={i}>
+              {/* Stem from label to point */}
               <line
-                x1={ann.cx} y1={padT} x2={ann.cx} y2={padT + chartH}
-                stroke={ann.color} strokeWidth="1" strokeDasharray="3,3" opacity="0.5"
+                x1={ann.tagX} y1={ann.tagY + (ann.isUp ? ann.th : 0)}
+                x2={ann.cx} y2={ann.cy + (ann.isUp ? -3 : 3)}
+                stroke={ann.borderColor} strokeWidth="1"
               />
-              <circle cx={ann.cx} cy={ann.cy} r={5} fill={ann.color} stroke="#0f172a" strokeWidth="2" />
+              {/* Point on line */}
+              <circle cx={ann.cx} cy={ann.cy} r={3} fill={ann.color} />
+              {/* Tag background */}
+              <rect
+                x={ann.tagX - ann.tw / 2} y={ann.tagY}
+                width={ann.tw} height={ann.th} rx={5}
+                fill={ann.bgColor} stroke={ann.borderColor} strokeWidth={0.5}
+              />
+              {/* Tag text */}
               <text
-                x={ann.cx} y={padT - 6} textAnchor="middle"
-                fill={ann.color} fontSize="10" fontWeight="600"
+                x={ann.tagX} y={ann.tagY + 14}
+                textAnchor="middle" fill={ann.color}
+                fontSize="10" fontWeight="600" fontFamily="var(--mono)"
               >
-                {ann.sector}
+                {ann.label}
               </text>
             </g>
           ))}
 
+          {/* Last-price horizontal line */}
+          <line
+            x1={chart.annPos.length ? Math.max(...chart.annPos.map(a => a.cx)) + 10 : W - padR - 40}
+            y1={chart.lastY} x2={W - padR} y2={chart.lastY}
+            stroke="var(--accent)" strokeWidth="1" strokeDasharray="2 3" opacity="0.5"
+          />
+
           {/* Last-price tag */}
           <rect
-            x={W - padR + 4} y={chart.lastY - 11}
-            width={68} height={22} rx={4}
-            fill="#6ea8ff"
+            x={W - padR + 2} y={chart.lastY - 11}
+            width={52} height={22} rx={4}
+            fill="var(--accent)"
           />
           <text
-            x={W - padR + 38} y={chart.lastY + 4}
-            textAnchor="middle" fill="#fff" fontSize="11" fontWeight="600"
+            x={W - padR + 28} y={chart.lastY + 4}
+            textAnchor="middle" fill="#1a0f08" fontSize="10" fontWeight="700" fontFamily="var(--mono)"
           >
-            ${fmtPrice(lastPrice)}
+            ${(lastPrice / 1000).toFixed(1)}K
           </text>
         </svg>
 
-        {/* Legend */}
         <div className="rot-legend">
           {sectors.map((s) => (
             <span key={s} className="rot-lg-item">
@@ -229,9 +262,7 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
         </div>
       </div>
 
-      {/* Bottom section */}
       <div className="rot-bottom">
-        {/* Contribution bar chart */}
         <div className="rot-contrib-card">
           <div className="card-head">
             <span className="card-title">板块贡献排行</span>
@@ -260,7 +291,6 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
           </div>
         </div>
 
-        {/* Timeline */}
         <div className="rot-timeline-card">
           <div className="card-head">
             <span className="card-title">轮动时间线</span>
@@ -269,12 +299,14 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
             {annotations.map((ann, i) => (
               <div className="rot-event" key={i}>
                 <span
-                  className="rot-event-dot"
-                  style={{ background: SECTOR_COLORS[ann.sector] || '#888' }}
+                  className={`rot-event-dot ${ann.isUp ? 'up' : 'dn'}`}
+                  style={{ background: ann.isUp ? '#2dd4a4' : '#f47171' }}
                 />
                 <div className="rot-event-body">
                   <span className="rot-event-title">
-                    {ann.sector} {ann.isUp ? '领涨' : '领跌'}
+                    <span className={ann.isUp ? 'up' : 'dn'}>{ann.isUp ? '▲' : '▼'}</span>
+                    {' '}{(ann.topSymbols || []).join(', ')}
+                    <span className="dim"> · {ann.sector}</span>
                   </span>
                   <span className="rot-event-sub">
                     BTC ${fmtPrice(ann.value)}

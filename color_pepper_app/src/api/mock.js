@@ -227,6 +227,22 @@ export async function getRotationAnalysis(period = '30d') {
     return s / n;
   });
 
+  function topSymbolsInWindow(ws, we, isUp) {
+    const symC = {};
+    SYMBOLS.forEach((sym) => { symC[sym.sym] = 0; });
+    for (let j = ws; j <= we; j++) {
+      SYMBOLS.forEach((sym) => {
+        if (j + 1 < N) {
+          symC[sym.sym] += (sym.mcap / totalMcap) * (series[sym.sym][j + 1] - series[sym.sym][j]) * 1000;
+        }
+      });
+    }
+    return Object.entries(symC)
+      .sort((a, b) => isUp ? b[1] - a[1] : a[1] - b[1])
+      .slice(0, 3)
+      .map(([sym]) => sym);
+  }
+
   const annotations = [];
   for (let t = 6; t < N - 6; t++) {
     const db = smooth[t] - smooth[t - 5];
@@ -245,7 +261,7 @@ export async function getRotationAnalysis(period = '30d') {
       const v = isUp ? sums[sec] : -sums[sec];
       if (v > bv) { bv = v; best = sec; }
     });
-    annotations.push({ t, sector: best, isUp, value: btcLine[t] });
+    annotations.push({ t, sector: best, isUp, value: btcLine[t], topSymbols: topSymbolsInWindow(ws, we, isUp) });
   }
 
   for (let i = 0; i < annotations.length - 1; i++) {
@@ -263,7 +279,7 @@ export async function getRotationAnalysis(period = '30d') {
         const v = isUp ? sums[sec] : -sums[sec];
         if (v > bv) { bv = v; best = sec; }
       });
-      annotations.splice(i + 1, 0, { t: mt, sector: best, isUp, value: btcLine[mt] });
+      annotations.splice(i + 1, 0, { t: mt, sector: best, isUp, value: btcLine[mt], topSymbols: topSymbolsInWindow(ws, we, isUp) });
       i++;
     }
   }
