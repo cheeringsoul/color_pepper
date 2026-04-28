@@ -50,6 +50,7 @@ function App() {
         </div>
         <nav className="primary-nav">
           <button className={`pn-item ${page === 'home' ? 'active' : ''}`} onClick={() => setPage('home')}>市场</button>
+          <button className={`pn-item ${page === 'rotation' ? 'active' : ''}`} onClick={() => setPage('rotation')}>轮动</button>
           <button className={`pn-item ${page === 'kline' ? 'active' : ''}`} onClick={() => setPage('kline')}>K线</button>
           <button className={`pn-item ${page === 'similarity' ? 'active' : ''}`} onClick={() => setPage('similarity')}>走势相似</button>
           <button className={`pn-item ${page === 'agent' ? 'active' : ''}`} onClick={() => setPage('agent')}>Agent</button>
@@ -70,6 +71,7 @@ function App() {
       </header>
 
       {page === 'home' && <HomePage data={data} onOpenSymbol={openSymbol} />}
+      {page === 'rotation' && <RotationPage data={data} onOpenSymbol={openSymbol} />}
       {page === 'kline' && (
         <KlinePage data={data} currentSym={currentSym} setCurrentSym={setCurrentSym}
           favorites={favorites} toggleFav={toggleFav} onAskAgent={askAgent} />
