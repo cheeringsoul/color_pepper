@@ -9,7 +9,7 @@ const SECTOR_COLORS = {
 };
 
 const W = 1000, H = 440;
-const padL = 8, padR = 56, padT = 36, padB = 24;
+const padL = 20, padR = 20, padT = 36, padB = 24;
 const N = 120;
 
 const chartW = W - padL - padR;
@@ -166,7 +166,7 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
           <span className="card-sub">共 {symbolCount} 个标的 · {sectors.length} 个板块</span>
         </div>
 
-        <svg className="rot-chart-svg" viewBox={`0 0 ${W} ${H}`}>
+        <svg className="rot-chart-svg" viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none">
           <defs>
             <linearGradient id="rot-grad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.15" />
@@ -231,21 +231,19 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
             </g>
           ))}
 
-          {/* Last-price horizontal line */}
+          {/* Last-price tag (overlaid on chart) */}
           <line
-            x1={chart.annPos.length ? Math.max(...chart.annPos.map(a => a.cx)) + 10 : W - padR - 40}
-            y1={chart.lastY} x2={W - padR} y2={chart.lastY}
+            x1={W - padR - 60} y1={chart.lastY}
+            x2={W - padR} y2={chart.lastY}
             stroke="var(--accent)" strokeWidth="1" strokeDasharray="2 3" opacity="0.5"
           />
-
-          {/* Last-price tag */}
           <rect
-            x={W - padR + 2} y={chart.lastY - 11}
-            width={52} height={22} rx={4}
+            x={W - padR - 56} y={chart.lastY - 11}
+            width={56} height={22} rx={4}
             fill="var(--accent)"
           />
           <text
-            x={W - padR + 28} y={chart.lastY + 4}
+            x={W - padR - 28} y={chart.lastY + 4}
             textAnchor="middle" fill="#1a0f08" fontSize="10" fontWeight="700" fontFamily="var(--mono)"
           >
             ${(lastPrice / 1000).toFixed(1)}K
