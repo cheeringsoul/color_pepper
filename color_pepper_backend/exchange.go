@@ -420,3 +420,38 @@ func normalizeSeries(closes []float64) []float64 {
 	}
 	return out
 }
+
+func dtwDistance(a, b []float64) float64 {
+	n, m := len(a), len(b)
+	if n == 0 || m == 0 {
+		return 0
+	}
+	dtw := make([][]float64, n+1)
+	for i := range dtw {
+		dtw[i] = make([]float64, m+1)
+		for j := range dtw[i] {
+			dtw[i][j] = math.Inf(1)
+		}
+	}
+	dtw[0][0] = 0
+	for i := 1; i <= n; i++ {
+		for j := 1; j <= m; j++ {
+			cost := math.Abs(a[i-1] - b[j-1])
+			dtw[i][j] = cost + math.Min(dtw[i-1][j], math.Min(dtw[i][j-1], dtw[i-1][j-1]))
+		}
+	}
+	return dtw[n][m]
+}
+
+func euclidDistance(a, b []float64) float64 {
+	n := len(a)
+	if len(b) < n {
+		n = len(b)
+	}
+	var sum float64
+	for i := 0; i < n; i++ {
+		d := a[i] - b[i]
+		sum += d * d
+	}
+	return math.Sqrt(sum)
+}

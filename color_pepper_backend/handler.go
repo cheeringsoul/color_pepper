@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"time"
 
 	ccxt "github.com/ccxt/ccxt/go/v4"
 )
@@ -46,13 +47,31 @@ func handleMarketOverview(w http.ResponseWriter, r *http.Request) {
 		btcDom = btcMeta.Mcap / totalMcap * 100
 	}
 
+	fgValue := 72
+	fgLabel, fgSentiment := fearGreedLabel(fgValue)
+
 	writeJSON(w, map[string]any{
 		"totalMcap":    map[string]any{"value": totalMcap, "change": btcChg, "label": fmtLargeNum(totalMcap)},
 		"volume24h":    map[string]any{"value": totalVol, "change": 0, "label": fmtLargeNum(totalVol)},
 		"btcDominance": map[string]any{"value": btcDom, "change": 0, "label": fmt.Sprintf("%.1f%%", btcDom)},
-		"fearGreed":    map[string]any{"value": 72, "change": 8, "label": "贪婪"},
+		"fearGreed":    map[string]any{"value": fgValue, "change": 8, "label": fgLabel, "sentiment": fgSentiment},
 		"btcPrice":     btcPrice,
 	})
+}
+
+func fearGreedLabel(v int) (label, sentiment string) {
+	switch {
+	case v >= 75:
+		return "极度贪婪", "极度贪婪"
+	case v >= 56:
+		return "贪婪", "偏贪婪"
+	case v >= 45:
+		return "中性", "中性"
+	case v >= 25:
+		return "恐惧", "偏恐惧"
+	default:
+		return "极度恐惧", "极度恐惧"
+	}
 }
 
 func fmtLargeNum(v float64) string {
@@ -292,7 +311,14 @@ func handleRotationHeatmap(w http.ResponseWriter, r *http.Request) {
 		heatmap = append(heatmap, row{sec, cells})
 	}
 
-	writeJSON(w, map[string]any{"sectors": sectorList, "heatmap": heatmap})
+	now := time.Now()
+	dates := make([]string, days)
+	for i := 0; i < days; i++ {
+		d := now.AddDate(0, 0, -(days - 1 - i))
+		dates[i] = fmt.Sprintf("%d/%d", int(d.Month()), d.Day())
+	}
+
+	writeJSON(w, map[string]any{"sectors": sectorList, "heatmap": heatmap, "dates": dates})
 }
 
 func dailyReturns(candles []ccxt.OHLCV) []float64 {
@@ -543,6 +569,64 @@ func handleRotationAnalysis(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// btcNorm: normalized BTC as percentage change from start
+	btcBase := btcLine[0]
+	if btcBase == 0 {
+		btcBase = 1
+	}
+	btcNorm := make([]float64, actualN)
+	for i, v := range btcLine {
+		btcNorm[i] = math.Round(((v/btcBase)-1)*100*1000) / 1000
+	}
+
+	// sectorLines: market-cap-weighted normalized line per sector
+	sectorLines := make(map[string][]float64)
+	for _, sec := range sectorList {
+		syms := symbolsInSector(sec)
+		totalSectorMcap := 0.0
+		for _, sym := range syms {
+			if m := findMeta(sym); m != nil {
+				totalSectorMcap += m.Mcap
+			}
+		}
+		if totalSectorMcap == 0 {
+			totalSectorMcap = 1
+		}
+		line := make([]float64, actualN)
+		for t := 0; t < actualN; t++ {
+			var weighted float64
+			for _, sym := range syms {
+				s, ok := series[sym]
+				if !ok || t >= len(s) {
+					continue
+				}
+				m := findMeta(sym)
+				if m == nil {
+					continue
+				}
+				weighted += (m.Mcap / totalSectorMcap) * (s[t] - 1) * 100
+			}
+			line[t] = math.Round(weighted*1000) / 1000
+		}
+		sectorLines[sec] = line
+	}
+
+	// dates: x-axis label strings
+	days := 30
+	switch period {
+	case "7d":
+		days = 7
+	case "14d":
+		days = 14
+	}
+	now := time.Now()
+	dates := make([]string, actualN)
+	for t := 0; t < actualN; t++ {
+		frac := float64(days) * (1 - float64(t)/float64(actualN-1))
+		d := now.Add(-time.Duration(frac * float64(24*time.Hour)))
+		dates[t] = fmt.Sprintf("%d/%d", int(d.Month()), d.Day())
+	}
+
 	// recent sector stats
 	recent := make(map[string]float64)
 	for _, sec := range sectorList {
@@ -570,6 +654,9 @@ func handleRotationAnalysis(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, map[string]any{
 		"btcLine":     btcLine,
+		"btcNorm":     btcNorm,
+		"sectorLines": sectorLines,
+		"dates":       dates,
 		"annotations": annotations,
 		"sectorStats": stats,
 		"sectors":     sectorList,
@@ -581,9 +668,19 @@ func handleRotationAnalysis(w http.ResponseWriter, r *http.Request) {
 
 func handleSimilarity(w http.ResponseWriter, r *http.Request) {
 	refSymbol := strings.ToUpper(queryString(r, "ref", "BTC"))
+	algo := queryString(r, "algo", "pearson")
+	period := queryString(r, "period", "30d")
 	minCorr := queryFloat(r, "minCorr", 0.5)
 
-	refCandles, err := exMgr.GetOHLCV(refSymbol, "1d", 90)
+	limit := 30
+	switch period {
+	case "7d":
+		limit = 7
+	case "90d":
+		limit = 90
+	}
+
+	refCandles, err := exMgr.GetOHLCV(refSymbol, "1d", limit)
 	if err != nil {
 		log.Printf("similarity ref %s: %v", refSymbol, err)
 		http.Error(w, "exchange error", 502)
@@ -613,7 +710,7 @@ func handleSimilarity(w http.ResponseWriter, r *http.Request) {
 		if meta.Sym == refSymbol {
 			continue
 		}
-		candles, err := exMgr.GetOHLCV(meta.Sym, "1d", 90)
+		candles, err := exMgr.GetOHLCV(meta.Sym, "1d", limit)
 		if err != nil || len(candles) < 10 {
 			continue
 		}
@@ -623,16 +720,28 @@ func handleSimilarity(w http.ResponseWriter, r *http.Request) {
 		}
 		norm := normalizeSeries(closes)
 
-		// align lengths
 		minLen := len(refNorm)
 		if len(norm) < minLen {
 			minLen = len(norm)
 		}
-		corr := pearson(refNorm[:minLen], norm[:minLen])
 
-		if corr >= minCorr {
+		var score float64
+		switch algo {
+		case "dtw":
+			dist := dtwDistance(refNorm[:minLen], norm[:minLen])
+			maxDist := float64(minLen) * 20
+			score = math.Max(0, 1-dist/maxDist)
+		case "euclid":
+			dist := euclidDistance(refNorm[:minLen], norm[:minLen])
+			maxDist := math.Sqrt(float64(minLen)) * 20
+			score = math.Max(0, 1-dist/maxDist)
+		default:
+			score = pearson(refNorm[:minLen], norm[:minLen])
+		}
+
+		if score >= minCorr {
 			candidates = append(candidates, candidate{
-				Sym: meta.Sym, Corr: math.Round(corr*100) / 100,
+				Sym: meta.Sym, Corr: math.Round(score*100) / 100,
 				Color: meta.Color, Norm: norm,
 			})
 		}

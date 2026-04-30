@@ -30,6 +30,8 @@ func main() {
 	mux.HandleFunc("POST /api/agent/chat", handleAgentChat)
 	mux.HandleFunc("GET /api/agent/alerts", handleAgentAlerts)
 	mux.HandleFunc("/ws/tickers", wsHub.HandleWS)
+	mux.HandleFunc("/ws/kline", HandleKlineWS)
+	mux.HandleFunc("/ws/orderbook", HandleOrderBookWS)
 
 	handler := corsMiddleware(mux)
 

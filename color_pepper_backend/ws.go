@@ -19,6 +19,19 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+func proConfig() map[string]interface{} {
+	cfg := map[string]interface{}{
+		"enableRateLimit": true,
+	}
+	for _, env := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"} {
+		if proxy := os.Getenv(env); proxy != "" {
+			cfg["httpsProxy"] = proxy
+			break
+		}
+	}
+	return cfg
+}
+
 type tickerMsg struct {
 	Sym     string  `json:"sym"`
 	Price   float64 `json:"price"`
@@ -45,6 +58,8 @@ func (c *wsClient) writePump() {
 		}
 	}
 }
+
+// ─── Ticker Hub (broadcast to all clients) ──────────────────
 
 type WSHub struct {
 	clients map[*wsClient]bool
@@ -77,7 +92,6 @@ func (h *WSHub) broadcast(data []byte) {
 		select {
 		case c.send <- data:
 		default:
-			// client too slow, drop it
 			go h.removeClient(c)
 		}
 	}
@@ -95,7 +109,6 @@ func (h *WSHub) HandleWS(w http.ResponseWriter, r *http.Request) {
 
 	go c.writePump()
 
-	// read pump: drain client messages and detect disconnect
 	defer h.removeClient(c)
 	for {
 		if _, _, err := conn.ReadMessage(); err != nil {
@@ -104,17 +117,8 @@ func (h *WSHub) HandleWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// StartWatching launches a goroutine that streams live tickers via ccxt pro
 func (h *WSHub) StartWatching() {
-	cfg := map[string]interface{}{
-		"enableRateLimit": true,
-	}
-	for _, env := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"} {
-		if proxy := os.Getenv(env); proxy != "" {
-			cfg["httpsProxy"] = proxy
-			break
-		}
-	}
+	cfg := proConfig()
 
 	go h.watchExchange("Binance", func() watcher {
 		ex := ccxtpro.NewBinance(copyMap(cfg))
@@ -187,7 +191,7 @@ func (h *WSHub) watchExchange(name string, create func() watcher) {
 					log.Printf("ws: %s watch error: %v", name, err)
 				}
 				time.Sleep(2 * time.Second)
-				break // break inner loop to recreate exchange and reconnect
+				break
 			}
 
 			for p, t := range tickers.Tickers {
@@ -208,4 +212,261 @@ func (h *WSHub) watchExchange(name string, create func() watcher) {
 			}
 		}
 	}
+}
+
+// ─── Per-client Kline WebSocket ─────────────────────────────
+
+func resolvePairAndExchange(sym string) (pair, exName string) {
+	for _, ex := range exMgr.exchanges {
+		if p, ok := ex.resolve(sym); ok {
+			return p, ex.name
+		}
+	}
+	return "", ""
+}
+
+func createWatchOHLCV(exName string) (func(string, ...ccxt.WatchOHLCVOptions) ([]ccxt.OHLCV, error), error) {
+	cfg := proConfig()
+	switch exName {
+	case "Binance":
+		ex := ccxtpro.NewBinance(copyMap(cfg))
+		if _, err := ex.LoadMarkets(); err != nil {
+			return nil, err
+		}
+		return ex.WatchOHLCV, nil
+	case "OKX":
+		ex := ccxtpro.NewOkx(copyMap(cfg))
+		if _, err := ex.LoadMarkets(); err != nil {
+			return nil, err
+		}
+		return ex.WatchOHLCV, nil
+	}
+	return nil, nil
+}
+
+func createWatchOrderBook(exName string) (func(string, ...ccxt.WatchOrderBookOptions) (ccxt.OrderBook, error), error) {
+	cfg := proConfig()
+	switch exName {
+	case "Binance":
+		ex := ccxtpro.NewBinance(copyMap(cfg))
+		if _, err := ex.LoadMarkets(); err != nil {
+			return nil, err
+		}
+		return ex.WatchOrderBook, nil
+	case "OKX":
+		ex := ccxtpro.NewOkx(copyMap(cfg))
+		if _, err := ex.LoadMarkets(); err != nil {
+			return nil, err
+		}
+		return ex.WatchOrderBook, nil
+	}
+	return nil, nil
+}
+
+func HandleKlineWS(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("ws/kline upgrade: %v", err)
+		return
+	}
+
+	sym := strings.ToUpper(r.URL.Query().Get("symbol"))
+	interval := r.URL.Query().Get("interval")
+	if sym == "" {
+		sym = "BTC"
+	}
+	if interval == "" {
+		interval = "1h"
+	}
+
+	pair, exName := resolvePairAndExchange(sym)
+	if pair == "" {
+		log.Printf("ws/kline: no pair for %s", sym)
+		conn.Close()
+		return
+	}
+
+	watchFn, err := createWatchOHLCV(exName)
+	if err != nil || watchFn == nil {
+		log.Printf("ws/kline: create exchange %s: %v", exName, err)
+		conn.Close()
+		return
+	}
+
+	log.Printf("ws/kline: %s %s via %s", sym, interval, exName)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}()
+
+	go func() {
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+
+			ohlcv, err := watchFn(pair, ccxt.WithWatchOHLCVTimeframe(interval))
+			if err != nil {
+				select {
+				case <-done:
+					return
+				default:
+					errStr := err.Error()
+					if strings.Contains(errStr, "closed") || strings.Contains(errStr, "EOF") {
+						return
+					}
+					log.Printf("ws/kline %s: %v", sym, err)
+					time.Sleep(2 * time.Second)
+					continue
+				}
+			}
+
+			if len(ohlcv) == 0 {
+				continue
+			}
+			last := ohlcv[len(ohlcv)-1]
+			data, _ := json.Marshal(map[string]any{
+				"type": "kline", "symbol": sym,
+				"time": last.Timestamp / 1000,
+				"open": last.Open, "high": last.High,
+				"low": last.Low, "close": last.Close,
+				"volume": last.Volume,
+			})
+			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				return
+			}
+		}
+	}()
+
+	<-done
+	conn.Close()
+}
+
+// ─── Per-client OrderBook WebSocket ─────────────────────────
+
+func HandleOrderBookWS(w http.ResponseWriter, r *http.Request) {
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Printf("ws/orderbook upgrade: %v", err)
+		return
+	}
+
+	sym := strings.ToUpper(r.URL.Query().Get("symbol"))
+	if sym == "" {
+		sym = "BTC"
+	}
+	limit := 9
+
+	pair, exName := resolvePairAndExchange(sym)
+	if pair == "" {
+		log.Printf("ws/orderbook: no pair for %s", sym)
+		conn.Close()
+		return
+	}
+
+	watchFn, err := createWatchOrderBook(exName)
+	if err != nil || watchFn == nil {
+		log.Printf("ws/orderbook: create exchange %s: %v", exName, err)
+		conn.Close()
+		return
+	}
+
+	log.Printf("ws/orderbook: %s via %s", sym, exName)
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		for {
+			if _, _, err := conn.ReadMessage(); err != nil {
+				return
+			}
+		}
+	}()
+
+	go func() {
+		type level struct {
+			Price float64 `json:"price"`
+			Qty   float64 `json:"qty"`
+			Total float64 `json:"total"`
+		}
+
+		for {
+			select {
+			case <-done:
+				return
+			default:
+			}
+
+			ob, err := watchFn(pair, ccxt.WithWatchOrderBookLimit(int64(limit)))
+			if err != nil {
+				select {
+				case <-done:
+					return
+				default:
+					errStr := err.Error()
+					if strings.Contains(errStr, "closed") || strings.Contains(errStr, "EOF") {
+						return
+					}
+					log.Printf("ws/orderbook %s: %v", sym, err)
+					time.Sleep(2 * time.Second)
+					continue
+				}
+			}
+
+			asks := make([]level, 0, limit)
+			var cumA float64
+			for _, a := range ob.Asks {
+				if len(a) < 2 {
+					continue
+				}
+				cumA += a[1]
+				asks = append(asks, level{a[0], a[1], cumA})
+				if len(asks) >= limit {
+					break
+				}
+			}
+
+			bids := make([]level, 0, limit)
+			var cumB float64
+			for _, b := range ob.Bids {
+				if len(b) < 2 {
+					continue
+				}
+				cumB += b[1]
+				bids = append(bids, level{b[0], b[1], cumB})
+				if len(bids) >= limit {
+					break
+				}
+			}
+
+			maxTotal := cumA
+			if cumB > maxTotal {
+				maxTotal = cumB
+			}
+			midPrice := 0.0
+			if len(ob.Asks) > 0 && len(ob.Bids) > 0 {
+				midPrice = (ob.Asks[0][0] + ob.Bids[0][0]) / 2
+			}
+
+			data, _ := json.Marshal(map[string]any{
+				"type": "orderbook", "symbol": sym,
+				"asks": asks, "bids": bids,
+				"maxTotal": maxTotal, "midPrice": midPrice,
+			})
+			if err := conn.WriteMessage(websocket.TextMessage, data); err != nil {
+				return
+			}
+		}
+	}()
+
+	<-done
+	conn.Close()
 }
