@@ -109,7 +109,7 @@ type ExchangeManager struct {
 }
 
 func NewExchangeManager() *ExchangeManager {
-	cfg := map[string]interface{}{
+	cfg := map[string]any{
 		"enableRateLimit": true,
 	}
 	for _, env := range []string{"HTTPS_PROXY", "https_proxy", "HTTP_PROXY", "http_proxy"} {
