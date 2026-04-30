@@ -1,14 +1,18 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import api from '../api';
 import TradingChart from '../components/TradingChart';
+import { MacdPane, RsiPane } from '../components/SubChart';
 import { fmtPrice } from '../utils';
+
+const WS_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/^http/, 'ws');
 
 export default function KlinePage({ symbols, currentSym, setCurrentSym, favorites, toggleFav, onAskAgent }) {
   const [tab, setTab] = useState('spot');
   const [tf, setTf] = useState('1h');
   const [search, setSearch] = useState('');
-  const [tradeSide, setTradeSide] = useState('limit');
   const [obMode, setObMode] = useState('split');
+  const [activeIndicators, setActiveIndicators] = useState({ ma: true, boll: false, macd: false, rsi: false });
+  const mainChartRef = useRef(null);
   const [klines, setKlines] = useState([]);
   const [orderBook, setOrderBook] = useState({ asks: [], bids: [], maxTotal: 1, midPrice: 0 });
 
@@ -26,8 +30,56 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
   }, [currentSym, tf]);
 
   useEffect(() => {
+    if (!WS_BASE) return;
+    const ws = new WebSocket(`${WS_BASE}/ws/kline?symbol=${currentSym}&interval=${tf}`);
+    ws.onmessage = (e) => {
+      try {
+        const candle = JSON.parse(e.data);
+        if (candle.type !== 'kline') return;
+        setKlines(prev => {
+          if (!prev.length) return prev;
+          const last = prev[prev.length - 1];
+          if (candle.time === last.time) {
+            return [...prev.slice(0, -1), candle];
+          } else if (candle.time > last.time) {
+            return [...prev.slice(1), candle];
+          }
+          return prev;
+        });
+      } catch {}
+    };
+    ws.onerror = () => ws.close();
+    return () => ws.close();
+  }, [currentSym, tf]);
+
+  useEffect(() => {
     api.getOrderBook(currentSym).then(setOrderBook);
   }, [currentSym]);
+
+  useEffect(() => {
+    if (!WS_BASE) return;
+    const ws = new WebSocket(`${WS_BASE}/ws/orderbook?symbol=${currentSym}`);
+    ws.onmessage = (e) => {
+      try {
+        const ob = JSON.parse(e.data);
+        if (ob.type !== 'orderbook') return;
+        setOrderBook(ob);
+      } catch {}
+    };
+    ws.onerror = () => ws.close();
+    return () => ws.close();
+  }, [currentSym]);
+
+  function toggleIndicator(key) {
+    setActiveIndicators(prev => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  const chartIndicators = useMemo(() => {
+    const ind = {};
+    if (activeIndicators.ma) ind.ma = [7, 25, 99];
+    if (activeIndicators.boll) ind.boll = true;
+    return ind;
+  }, [activeIndicators.ma, activeIndicators.boll]);
 
   const buyRatio = useMemo(() => {
     const totalBid = orderBook.bids.reduce((s, r) => s + r.qty, 0);
@@ -82,7 +134,7 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
       </aside>
 
       {/* Middle: chart + trade */}
-      <section className="kp-main">
+      <section className="kp-main" style={{ gridTemplateRows: 'auto auto 1fr' }}>
         <div className="kp-head">
           <div className="kp-symbol">
             <button className={`fav-btn ${favorites.has(symbol.sym) ? 'on' : ''}`}
@@ -114,6 +166,20 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
           <button className="kp-tab">深度</button>
           <button className="kp-tab">信息</button>
           <button className="kp-tab">动态</button>
+          <div className="ind-toggles">
+            {[
+              { key: 'ma', label: 'MA' },
+              { key: 'boll', label: 'BOLL' },
+              { key: 'macd', label: 'MACD' },
+              { key: 'rsi', label: 'RSI' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                className={`ind-btn ${activeIndicators[key] ? 'active' : ''}`}
+                onClick={() => toggleIndicator(key)}
+              >{label}</button>
+            ))}
+          </div>
           <div className="tf-group">
             {['1m', '5m', '15m', '1h', '4h', '1d', '1w'].map(t => (
               <button key={t} className={`tf ${tf === t ? 'active' : ''}`} onClick={() => setTf(t)}>{t}</button>
@@ -121,57 +187,44 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
           </div>
         </div>
 
-        <div className="kp-chart-wrap" style={{ gridTemplateRows: '1fr' }}>
-          <TradingChart klines={klines} symbol={currentSym} height={450} />
-        </div>
-
-        <div className="kp-trade">
-          <div className="kt-tabs">
-            <button className={`kt-tab ${tradeSide === 'limit' ? 'active' : ''}`} onClick={() => setTradeSide('limit')}>限价委托</button>
-            <button className={`kt-tab ${tradeSide === 'market' ? 'active' : ''}`} onClick={() => setTradeSide('market')}>市价委托</button>
-            <button className={`kt-tab ${tradeSide === 'stop' ? 'active' : ''}`} onClick={() => setTradeSide('stop')}>止盈止损</button>
-          </div>
-          <div className="kt-forms">
-            {['buy', 'sell'].map(side => (
-              <div key={side} className="kt-form">
-                <div className="kt-row">
-                  <div className="lbl">价格</div>
-                  <div className="input">
-                    <input defaultValue={fmtPrice(symbol.price)} />
-                    <span className="suffix">USDT</span>
-                  </div>
-                </div>
-                <div className="kt-row">
-                  <div className="lbl">数量</div>
-                  <div className="input">
-                    <input placeholder="最小 0.00001" />
-                    <span className="suffix">{symbol.sym}</span>
-                  </div>
-                </div>
-                <div className="kt-slider">
-                  <input type="range" min="0" max="100" defaultValue="0" />
-                  <div className="pcts"><span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span></div>
-                </div>
-                <div className="kt-meta">
-                  <span>可用 0.00 USDT</span>
-                  <span className="grow"></span>
-                  <span>可{side === 'buy' ? '买' : '卖'} 0.00 {symbol.sym}</span>
-                </div>
-                <button className={`kt-cta ${side}`}>{side === 'buy' ? '买入' : '卖出'} {symbol.sym}</button>
+        <div className="kp-chart-wrap">
+          <div className="tv-main-pane">
+            {activeIndicators.ma && (
+              <div className="ind-legend">
+                <span className="ind-legend-item" style={{ color: '#f5c842' }}>MA(7)</span>
+                <span className="ind-legend-item" style={{ color: '#6ea8ff' }}>MA(25)</span>
+                <span className="ind-legend-item" style={{ color: '#b48cff' }}>MA(99)</span>
               </div>
-            ))}
+            )}
+            {activeIndicators.boll && (
+              <div className="ind-legend" style={{ top: activeIndicators.ma ? 22 : 6 }}>
+                <span className="ind-legend-item" style={{ color: '#f5c842' }}>BOLL(20,2)</span>
+              </div>
+            )}
+            <TradingChart
+              ref={mainChartRef}
+              klines={klines}
+              symbol={currentSym}
+              indicators={chartIndicators}
+              showTimeAxis={!activeIndicators.macd && !activeIndicators.rsi}
+            />
           </div>
+          {activeIndicators.macd && (
+            <MacdPane
+              klines={klines}
+              showTimeAxis={!activeIndicators.rsi}
+              mainChartRef={mainChartRef}
+            />
+          )}
+          {activeIndicators.rsi && (
+            <RsiPane
+              klines={klines}
+              showTimeAxis
+              mainChartRef={mainChartRef}
+            />
+          )}
         </div>
 
-        <div className="kp-orders">
-          <div className="ko-tabs">
-            <button className="ko-tab active">当前委托 (0)</button>
-            <button className="ko-tab">历史委托</button>
-            <button className="ko-tab">仓位</button>
-            <button className="ko-tab">资产</button>
-          </div>
-          <div className="ko-empty">暂无当前委托</div>
-        </div>
       </section>
 
       {/* Right: orderbook */}

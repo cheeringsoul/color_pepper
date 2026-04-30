@@ -5,6 +5,8 @@ import KlinePage from './pages/KlinePage';
 import RotationPage from './pages/RotationPage';
 import SimilarityPage from './pages/SimilarityPage';
 import AgentPage from './pages/AgentPage';
+import MultiKlinePage from './pages/MultiKlinePage';
+import OnchainPage from './pages/OnchainPage';
 
 const WS_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/^http/, 'ws');
 
@@ -78,7 +80,7 @@ export default function App() {
     setTimeout(() => setToast(null), 2500);
   }
 
-  const isResearch = page === 'rotation' || page === 'similarity';
+  const isResearch = page === 'rotation' || page === 'similarity' || page === 'multikline';
 
   return (
     <div className={`app${isResearch ? ' has-subnav' : ''}`}>
@@ -93,6 +95,7 @@ export default function App() {
           <button className={`pn-item ${page === 'home' ? 'active' : ''}`} onClick={() => setPage('home')}>市场</button>
           <button className={`pn-item ${page === 'kline' ? 'active' : ''}`} onClick={() => setPage('kline')}>行情</button>
           <button className={`pn-item ${isResearch ? 'active' : ''}`} onClick={() => setPage(isResearch ? page : 'rotation')}>研究</button>
+          <button className={`pn-item ${page === 'onchain' ? 'active' : ''}`} onClick={() => setPage('onchain')}>链上</button>
           <button className={`pn-item ${page === 'agent' ? 'active' : ''}`} onClick={() => setPage('agent')}>Agent</button>
         </nav>
         <div className="search">
@@ -114,6 +117,7 @@ export default function App() {
         <nav className="subnav">
           <button className={`sn-item${page === 'rotation' ? ' active' : ''}`} onClick={() => setPage('rotation')}>板块轮动</button>
           <button className={`sn-item${page === 'similarity' ? ' active' : ''}`} onClick={() => setPage('similarity')}>走势相似</button>
+          <button className={`sn-item${page === 'multikline' ? ' active' : ''}`} onClick={() => setPage('multikline')}>多币观察</button>
         </nav>
       )}
 
@@ -130,6 +134,8 @@ export default function App() {
         />
       )}
       {page === 'similarity' && <SimilarityPage symbols={symbols} onOpenSymbol={openSymbol} />}
+      {page === 'multikline' && <MultiKlinePage symbols={symbols} />}
+      {page === 'onchain' && <OnchainPage />}
       {page === 'agent' && <AgentPage contextSym={currentSym} onOpenSymbol={openSymbol} />}
 
       {toast && <div className="cp-toast">{toast}</div>}
