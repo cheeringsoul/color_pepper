@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import api from '../api';
 import TradingChart from '../components/TradingChart';
-import { MacdPane, RsiPane } from '../components/SubChart';
+import DrawingCanvas from '../components/DrawingCanvas';
 import { fmtPrice } from '../utils';
 
 const WS_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/^http/, 'ws');
@@ -12,7 +12,7 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
   const [search, setSearch] = useState('');
   const [obMode, setObMode] = useState('split');
   const [activeIndicators, setActiveIndicators] = useState({ ma: true, boll: false, macd: false, rsi: false });
-  const mainChartRef = useRef(null);
+  const tradingChartRef = useRef(null);
   const [klines, setKlines] = useState([]);
   const [orderBook, setOrderBook] = useState({ asks: [], bids: [], maxTotal: 1, midPrice: 0 });
 
@@ -78,8 +78,10 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
     const ind = {};
     if (activeIndicators.ma) ind.ma = [7, 25, 99];
     if (activeIndicators.boll) ind.boll = true;
+    if (activeIndicators.macd) ind.macd = true;
+    if (activeIndicators.rsi) ind.rsi = true;
     return ind;
-  }, [activeIndicators.ma, activeIndicators.boll]);
+  }, [activeIndicators]);
 
   const buyRatio = useMemo(() => {
     const totalBid = orderBook.bids.reduce((s, r) => s + r.qty, 0);
@@ -134,7 +136,7 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
       </aside>
 
       {/* Middle: chart + trade */}
-      <section className="kp-main" style={{ gridTemplateRows: 'auto auto 1fr' }}>
+      <section className="kp-main">
         <div className="kp-head">
           <div className="kp-symbol">
             <button className={`fav-btn ${favorites.has(symbol.sym) ? 'on' : ''}`}
@@ -188,41 +190,26 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
         </div>
 
         <div className="kp-chart-wrap">
-          <div className="tv-main-pane">
+          <div className="tv-chart-legends">
             {activeIndicators.ma && (
-              <div className="ind-legend">
+              <div className="ind-legend-row">
                 <span className="ind-legend-item" style={{ color: '#f5c842' }}>MA(7)</span>
                 <span className="ind-legend-item" style={{ color: '#6ea8ff' }}>MA(25)</span>
                 <span className="ind-legend-item" style={{ color: '#b48cff' }}>MA(99)</span>
               </div>
             )}
             {activeIndicators.boll && (
-              <div className="ind-legend" style={{ top: activeIndicators.ma ? 22 : 6 }}>
-                <span className="ind-legend-item" style={{ color: '#f5c842' }}>BOLL(20,2)</span>
-              </div>
+              <span className="ind-legend-item" style={{ color: '#f5c842' }}>BOLL(20,2)</span>
             )}
-            <TradingChart
-              ref={mainChartRef}
-              klines={klines}
-              symbol={currentSym}
-              indicators={chartIndicators}
-              showTimeAxis={!activeIndicators.macd && !activeIndicators.rsi}
-            />
+            {activeIndicators.macd && (
+              <span className="ind-legend-item" style={{ color: '#5e6473' }}>MACD(12,26,9)</span>
+            )}
+            {activeIndicators.rsi && (
+              <span className="ind-legend-item" style={{ color: '#5e6473' }}>RSI(14)</span>
+            )}
           </div>
-          {activeIndicators.macd && (
-            <MacdPane
-              klines={klines}
-              showTimeAxis={!activeIndicators.rsi}
-              mainChartRef={mainChartRef}
-            />
-          )}
-          {activeIndicators.rsi && (
-            <RsiPane
-              klines={klines}
-              showTimeAxis
-              mainChartRef={mainChartRef}
-            />
-          )}
+          <TradingChart ref={tradingChartRef} klines={klines} symbol={currentSym} indicators={chartIndicators} />
+          <DrawingCanvas chartRef={tradingChartRef} symbol={currentSym} />
         </div>
 
       </section>

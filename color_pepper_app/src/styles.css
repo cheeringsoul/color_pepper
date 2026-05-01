@@ -476,11 +476,11 @@ input, textarea { font-family: inherit; }
 /* Middle */
 .kp-main {
   display: grid;
-  grid-template-rows: auto auto minmax(360px, 1fr) auto auto;
-  overflow-y: auto;
+  grid-template-rows: auto auto 1fr;
   background: var(--bg-0);
   min-width: 0;
   min-height: 0;
+  overflow: hidden;
 }
 .kp-head {
   display: flex; align-items: center; gap: 24px;
@@ -557,38 +557,24 @@ input, textarea { font-family: inherit; }
 .kp-chart-wrap {
   min-height: 0;
   min-width: 0;
-  display: flex;
-  flex-direction: column;
+  position: relative;
   background: var(--bg-1);
   overflow: hidden;
-}
-
-.tv-main-pane {
-  flex: 1;
-  min-height: 200px;
-  position: relative;
   display: flex;
   flex-direction: column;
+}
+.tv-chart-legends {
+  position: absolute; left: 12px; top: 6px; z-index: 5;
+  display: flex; gap: 10px; flex-wrap: wrap;
+  pointer-events: none;
+}
+.tv-chart-legends .ind-legend-row {
+  display: flex; gap: 10px;
 }
 .tv-chart-container {
   flex: 1;
   min-height: 0;
   width: 100%;
-}
-
-.sub-chart-pane {
-  border-top: 1px solid var(--line);
-  position: relative;
-  flex-shrink: 0;
-}
-.sub-chart-inner {
-  width: 100%;
-  height: 100%;
-}
-.sub-chart-label {
-  position: absolute; left: 12px; top: 4px; z-index: 5;
-  font-family: var(--mono); font-size: 10px; font-weight: 600;
-  color: var(--text-3); letter-spacing: .02em;
 }
 
 /* Indicator toggles */
@@ -609,13 +595,33 @@ input, textarea { font-family: inherit; }
 .ind-btn:hover { color: var(--text-2); }
 .ind-btn.active { background: var(--accent-soft); color: var(--accent); }
 
-.ind-legend {
-  position: absolute; left: 16px; top: 6px; z-index: 5;
-  display: flex; gap: 12px;
-}
 .ind-legend-item {
   font-family: var(--mono); font-size: 10px; font-weight: 600;
   letter-spacing: .02em;
+}
+
+/* Drawing tools */
+.drawing-toolbar {
+  position: absolute; left: 8px; top: 36px; z-index: 10;
+  display: flex; flex-direction: column; gap: 2px;
+  background: var(--bg-2); border: 1px solid var(--line);
+  border-radius: 8px; padding: 4px;
+}
+.drawing-toolbar button {
+  width: 30px; height: 30px;
+  background: transparent; border: 0; border-radius: 6px;
+  color: var(--text-2); font-size: 13px; font-weight: 600;
+  font-family: var(--mono);
+  display: grid; place-items: center;
+  cursor: pointer; transition: all .15s;
+}
+.drawing-toolbar button:hover { color: var(--text); background: var(--bg-3); }
+.drawing-toolbar button.active { background: var(--accent-soft); color: var(--accent); }
+.drawing-divider { height: 1px; background: var(--line); margin: 2px 0; }
+.drawing-canvas {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  z-index: 4; pointer-events: none;
 }
 
 .kp-trade {
