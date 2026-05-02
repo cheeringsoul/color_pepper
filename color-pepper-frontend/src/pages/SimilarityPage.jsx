@@ -5,7 +5,7 @@ import { fmtPrice } from '../utils';
 
 const colors = ['#627eea','#f3ba2f','#9945ff','#e84142','#00ec97','#2a5ada','#0088cc','#28a0f0'];
 
-export default function SimilarityPage({ symbols, onOpenSymbol }) {
+export default function SimilarityPage({ symbols, onOpenSymbol, onSendToWatch }) {
   const [algo, setAlgo] = useState('pearson');
   const [tf, setTf] = useState('4h');
   const [period, setPeriod] = useState('30d');
@@ -139,8 +139,12 @@ export default function SimilarityPage({ symbols, onOpenSymbol }) {
             <div className="card-sub">所有曲线归一化为相对起点的百分比变化 · 点击图例可隐藏单条</div>
           </div>
           <div style={{ display: 'flex', gap: 6 }}>
-            <button className="chip">导出图片</button>
-            <button className="chip">添加到自选</button>
+            {onSendToWatch && (
+              <button className="btn" onClick={() => {
+                const syms = [refSym, ...Array.from(active).filter(s => !hidden.has(s))];
+                onSendToWatch(syms);
+              }}>发送到多币观察</button>
+            )}
           </div>
         </div>
 

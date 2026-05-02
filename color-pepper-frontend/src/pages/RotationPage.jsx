@@ -134,7 +134,7 @@ function buildChartOption(data) {
   };
 }
 
-export default function RotationPage({ symbols, onOpenSymbol }) {
+export default function RotationPage({ symbols, onOpenSymbol, onSendToWatch }) {
   const [period, setPeriod] = useState('30d');
   const [data, setData] = useState(null);
 
@@ -165,11 +165,17 @@ export default function RotationPage({ symbols, onOpenSymbol }) {
             <span className="card-title">板块轮动走势</span>
             <span className="card-sub">共 {symbolCount} 个标的 · {sectors.length} 个板块 · 归一化涨跌幅 · Shift+滚轮缩放</span>
           </div>
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             {['7d', '14d', '30d'].map((p) => (
               <button key={p} className={'pill' + (period === p ? ' active' : '')}
                 onClick={() => setPeriod(p)}>{p}</button>
             ))}
+            {onSendToWatch && (
+              <button className="btn" onClick={() => {
+                const topSyms = sectorStats.map(s => symbols.find(sym => sym.sector === s.sector)?.sym).filter(Boolean);
+                onSendToWatch([...new Set(topSyms)]);
+              }}>发送到多币观察</button>
+            )}
           </div>
         </div>
         {chartOption && (

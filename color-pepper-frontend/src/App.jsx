@@ -6,7 +6,9 @@ import RotationPage from './pages/RotationPage';
 import SimilarityPage from './pages/SimilarityPage';
 import AgentPage from './pages/AgentPage';
 import MultiKlinePage from './pages/MultiKlinePage';
+import FundingPage from './pages/FundingPage';
 import OnchainPage from './pages/OnchainPage';
+import MonitorPage from './pages/MonitorPage';
 
 const WS_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/^http/, 'ws');
 
@@ -15,6 +17,7 @@ export default function App() {
   const [currentSym, setCurrentSym] = useState('BTC');
   const [symbols, setSymbols] = useState([]);
   const [favorites, setFavorites] = useState(new Set(['BTC', 'ETH', 'SOL']));
+  const [watchlist, setWatchlist] = useState(['BTC', 'ETH']);
   const [toast, setToast] = useState(null);
   const symbolsRef = useRef(symbols);
   symbolsRef.current = symbols;
@@ -75,12 +78,17 @@ export default function App() {
     setPage('agent');
   }
 
+  function sendToWatch(syms) {
+    setWatchlist(syms);
+    setPage('multikline');
+  }
+
   function showToast(msg) {
     setToast(msg);
     setTimeout(() => setToast(null), 2500);
   }
 
-  const isResearch = page === 'rotation' || page === 'similarity' || page === 'multikline';
+  const isResearch = page === 'rotation' || page === 'similarity' || page === 'multikline' || page === 'funding';
 
   return (
     <div className={`app${isResearch ? ' has-subnav' : ''}`}>
@@ -96,6 +104,7 @@ export default function App() {
           <button className={`pn-item ${page === 'kline' ? 'active' : ''}`} onClick={() => setPage('kline')}>行情</button>
           <button className={`pn-item ${isResearch ? 'active' : ''}`} onClick={() => setPage(isResearch ? page : 'rotation')}>研究</button>
           <button className={`pn-item ${page === 'onchain' ? 'active' : ''}`} onClick={() => setPage('onchain')}>链上</button>
+          <button className={`pn-item ${page === 'monitor' ? 'active' : ''}`} onClick={() => setPage('monitor')}>监控</button>
           <button className={`pn-item ${page === 'agent' ? 'active' : ''}`} onClick={() => setPage('agent')}>Agent</button>
         </nav>
         <div className="search">
@@ -118,11 +127,12 @@ export default function App() {
           <button className={`sn-item${page === 'rotation' ? ' active' : ''}`} onClick={() => setPage('rotation')}>板块轮动</button>
           <button className={`sn-item${page === 'similarity' ? ' active' : ''}`} onClick={() => setPage('similarity')}>走势相似</button>
           <button className={`sn-item${page === 'multikline' ? ' active' : ''}`} onClick={() => setPage('multikline')}>多币观察</button>
+          <button className={`sn-item${page === 'funding' ? ' active' : ''}`} onClick={() => setPage('funding')}>资金费率</button>
         </nav>
       )}
 
       {page === 'home' && <HomePage symbols={symbols} onOpenSymbol={openSymbol} />}
-      {page === 'rotation' && <RotationPage symbols={symbols} onOpenSymbol={openSymbol} />}
+      {page === 'rotation' && <RotationPage symbols={symbols} onOpenSymbol={openSymbol} onSendToWatch={sendToWatch} />}
       {page === 'kline' && (
         <KlinePage
           symbols={symbols}
@@ -133,9 +143,11 @@ export default function App() {
           onAskAgent={askAgent}
         />
       )}
-      {page === 'similarity' && <SimilarityPage symbols={symbols} onOpenSymbol={openSymbol} />}
-      {page === 'multikline' && <MultiKlinePage symbols={symbols} />}
+      {page === 'similarity' && <SimilarityPage symbols={symbols} onOpenSymbol={openSymbol} onSendToWatch={sendToWatch} />}
+      {page === 'multikline' && <MultiKlinePage symbols={symbols} initialPanels={watchlist} />}
+      {page === 'funding' && <FundingPage />}
       {page === 'onchain' && <OnchainPage />}
+      {page === 'monitor' && <MonitorPage />}
       {page === 'agent' && <AgentPage contextSym={currentSym} onOpenSymbol={openSymbol} />}
 
       {toast && <div className="cp-toast">{toast}</div>}

@@ -44,8 +44,12 @@ function KlinePanel({ sym, symbolInfo, onRemove }) {
   );
 }
 
-export default function MultiKlinePage({ symbols }) {
-  const [panels, setPanels] = useState(['BTC', 'ETH']);
+export default function MultiKlinePage({ symbols, initialPanels }) {
+  const [panels, setPanels] = useState(initialPanels || ['BTC', 'ETH']);
+
+  useEffect(() => {
+    if (initialPanels) setPanels(initialPanels);
+  }, [initialPanels]);
   const [input, setInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
 

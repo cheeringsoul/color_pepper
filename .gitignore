@@ -1,9 +1,10 @@
 node_modules/
 dist/
-color_pepper_app/src-tauri/target/
-color_pepper_backend/color_pepper_backend
+color-pepper-frontend/src-tauri/target/
+color-pepper-backend/color_pepper_backend
 .DS_Store
 *.log
 .env
 .env.*
 .idea/
+local/

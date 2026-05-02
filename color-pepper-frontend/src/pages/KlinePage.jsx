@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import api from '../api';
 import TradingChart from '../components/TradingChart';
 import DrawingCanvas from '../components/DrawingCanvas';
+import BasisPanel from '../components/BasisPanel';
+import DepthChart from '../components/DepthChart';
 import { fmtPrice } from '../utils';
 
 const WS_BASE = (import.meta.env.VITE_API_BASE_URL || '').replace(/^http/, 'ws');
@@ -11,6 +13,7 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
   const [tf, setTf] = useState('1h');
   const [search, setSearch] = useState('');
   const [obMode, setObMode] = useState('split');
+  const [chartView, setChartView] = useState('chart');
   const [activeIndicators, setActiveIndicators] = useState({ ma: true, boll: false, macd: false, rsi: false });
   const tradingChartRef = useRef(null);
   const [klines, setKlines] = useState([]);
@@ -164,53 +167,70 @@ export default function KlinePage({ symbols, currentSym, setCurrentSym, favorite
         </div>
 
         <div className="kp-tabs">
-          <button className="kp-tab active">图表</button>
-          <button className="kp-tab">深度</button>
-          <button className="kp-tab">信息</button>
-          <button className="kp-tab">动态</button>
-          <div className="ind-toggles">
-            {[
-              { key: 'ma', label: 'MA' },
-              { key: 'boll', label: 'BOLL' },
-              { key: 'macd', label: 'MACD' },
-              { key: 'rsi', label: 'RSI' },
-            ].map(({ key, label }) => (
-              <button
-                key={key}
-                className={`ind-btn ${activeIndicators[key] ? 'active' : ''}`}
-                onClick={() => toggleIndicator(key)}
-              >{label}</button>
-            ))}
-          </div>
-          <div className="tf-group">
-            {['1m', '5m', '15m', '1h', '4h', '1d', '1w'].map(t => (
-              <button key={t} className={`tf ${tf === t ? 'active' : ''}`} onClick={() => setTf(t)}>{t}</button>
-            ))}
-          </div>
+          <button className={`kp-tab ${chartView === 'chart' ? 'active' : ''}`} onClick={() => setChartView('chart')}>图表</button>
+          <button className={`kp-tab ${chartView === 'basis' ? 'active' : ''}`} onClick={() => setChartView('basis')}>价差</button>
+          <button className={`kp-tab ${chartView === 'depth' ? 'active' : ''}`} onClick={() => setChartView('depth')}>深度</button>
+          {chartView === 'chart' && (
+            <>
+              <div className="ind-toggles">
+                {[
+                  { key: 'ma', label: 'MA' },
+                  { key: 'boll', label: 'BOLL' },
+                  { key: 'macd', label: 'MACD' },
+                  { key: 'rsi', label: 'RSI' },
+                ].map(({ key, label }) => (
+                  <button
+                    key={key}
+                    className={`ind-btn ${activeIndicators[key] ? 'active' : ''}`}
+                    onClick={() => toggleIndicator(key)}
+                  >{label}</button>
+                ))}
+              </div>
+              <div className="tf-group">
+                {['1m', '5m', '15m', '1h', '4h', '1d', '1w'].map(t => (
+                  <button key={t} className={`tf ${tf === t ? 'active' : ''}`} onClick={() => setTf(t)}>{t}</button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
 
-        <div className="kp-chart-wrap">
-          <div className="tv-chart-legends">
-            {activeIndicators.ma && (
-              <div className="ind-legend-row">
-                <span className="ind-legend-item" style={{ color: '#f5c842' }}>MA(7)</span>
-                <span className="ind-legend-item" style={{ color: '#6ea8ff' }}>MA(25)</span>
-                <span className="ind-legend-item" style={{ color: '#b48cff' }}>MA(99)</span>
-              </div>
-            )}
-            {activeIndicators.boll && (
-              <span className="ind-legend-item" style={{ color: '#f5c842' }}>BOLL(20,2)</span>
-            )}
-            {activeIndicators.macd && (
-              <span className="ind-legend-item" style={{ color: '#5e6473' }}>MACD(12,26,9)</span>
-            )}
-            {activeIndicators.rsi && (
-              <span className="ind-legend-item" style={{ color: '#5e6473' }}>RSI(14)</span>
-            )}
+        {chartView === 'chart' && (
+          <div className="kp-chart-wrap">
+            <div className="tv-chart-legends">
+              {activeIndicators.ma && (
+                <div className="ind-legend-row">
+                  <span className="ind-legend-item" style={{ color: '#f5c842' }}>MA(7)</span>
+                  <span className="ind-legend-item" style={{ color: '#6ea8ff' }}>MA(25)</span>
+                  <span className="ind-legend-item" style={{ color: '#b48cff' }}>MA(99)</span>
+                </div>
+              )}
+              {activeIndicators.boll && (
+                <span className="ind-legend-item" style={{ color: '#f5c842' }}>BOLL(20,2)</span>
+              )}
+              {activeIndicators.macd && (
+                <span className="ind-legend-item" style={{ color: '#5e6473' }}>MACD(12,26,9)</span>
+              )}
+              {activeIndicators.rsi && (
+                <span className="ind-legend-item" style={{ color: '#5e6473' }}>RSI(14)</span>
+              )}
+            </div>
+            <TradingChart ref={tradingChartRef} klines={klines} symbol={currentSym} indicators={chartIndicators} />
+            <DrawingCanvas chartRef={tradingChartRef} symbol={currentSym} />
           </div>
-          <TradingChart ref={tradingChartRef} klines={klines} symbol={currentSym} indicators={chartIndicators} />
-          <DrawingCanvas chartRef={tradingChartRef} symbol={currentSym} />
-        </div>
+        )}
+
+        {chartView === 'basis' && (
+          <div className="kp-exchange-wrap">
+            <BasisPanel currentSym={currentSym} symbol={symbol} />
+          </div>
+        )}
+
+        {chartView === 'depth' && (
+          <div className="kp-depth-wrap">
+            <DepthChart symbol={symbol} orderBook={orderBook} />
+          </div>
+        )}
 
       </section>
 
