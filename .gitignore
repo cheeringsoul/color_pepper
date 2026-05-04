@@ -7,4 +7,4 @@ color-pepper-backend/color_pepper_backend
 .env
 .env.*
 .idea/
-local/
+color-pepper-backend/local/

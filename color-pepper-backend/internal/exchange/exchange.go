@@ -1,4 +1,4 @@
-package main
+package exchange
 
 import (
 	"fmt"
@@ -99,16 +99,16 @@ type exchangeMethods struct {
 
 // ─── ExchangeManager ────────────────────────────────────────
 
-type ExchangeManager struct {
+type Manager struct {
 	exchanges []*exchange
 
 	mu         sync.RWMutex
 	tickers    map[string]cachedTicker
-	ohlcvs     map[string]cachedOHLCV
-	orderbooks map[string]cachedOrderBook
+	oHLCVs     map[string]cachedOHLCV
+	orderBooks map[string]cachedOrderBook
 }
 
-func NewExchangeManager() *ExchangeManager {
+func NewExchangeManager() *Manager {
 	cfg := map[string]any{
 		"enableRateLimit": true,
 	}
@@ -122,10 +122,10 @@ func NewExchangeManager() *ExchangeManager {
 	binance := ccxt.NewBinance(copyMap(cfg))
 	okx := ccxt.NewOkx(copyMap(cfg))
 
-	m := &ExchangeManager{
+	m := &Manager{
 		tickers:    make(map[string]cachedTicker),
-		ohlcvs:     make(map[string]cachedOHLCV),
-		orderbooks: make(map[string]cachedOrderBook),
+		oHLCVs:     make(map[string]cachedOHLCV),
+		orderBooks: make(map[string]cachedOrderBook),
 	}
 
 	binanceEx := &exchange{
@@ -212,7 +212,7 @@ func (ex *exchange) resolve(sym string) (string, bool) {
 
 // ─── Ticker ──────────────────────────────────────────────────
 
-func (m *ExchangeManager) GetTicker(sym string) (ccxt.Ticker, error) {
+func (m *Manager) GetTicker(sym string) (ccxt.Ticker, error) {
 	m.mu.RLock()
 	if c, ok := m.tickers[sym]; ok && time.Since(c.ts) < 10*time.Second {
 		m.mu.RUnlock()
@@ -242,7 +242,7 @@ func (m *ExchangeManager) GetTicker(sym string) (ccxt.Ticker, error) {
 	return ccxt.Ticker{}, lastErr
 }
 
-func (m *ExchangeManager) GetAllTickers() (map[string]ccxt.Ticker, error) {
+func (m *Manager) GetAllTickers() (map[string]ccxt.Ticker, error) {
 	for _, ex := range m.exchanges {
 		var pairs []string
 		pairToSym := make(map[string]string)
@@ -281,7 +281,7 @@ func (m *ExchangeManager) GetAllTickers() (map[string]ccxt.Ticker, error) {
 
 // ─── OHLCV ───────────────────────────────────────────────────
 
-func (m *ExchangeManager) GetOHLCV(sym, timeframe string, limit int) ([]ccxt.OHLCV, error) {
+func (m *Manager) GetOHLCV(sym, timeframe string, limit int) ([]ccxt.OHLCV, error) {
 	cacheKey := fmt.Sprintf("%s:%s:%d", sym, timeframe, limit)
 
 	ttl := 60 * time.Second
@@ -295,7 +295,7 @@ func (m *ExchangeManager) GetOHLCV(sym, timeframe string, limit int) ([]ccxt.OHL
 	}
 
 	m.mu.RLock()
-	if c, ok := m.ohlcvs[cacheKey]; ok && time.Since(c.ts) < ttl {
+	if c, ok := m.oHLCVs[cacheKey]; ok && time.Since(c.ts) < ttl {
 		m.mu.RUnlock()
 		return c.data, nil
 	}
@@ -316,7 +316,7 @@ func (m *ExchangeManager) GetOHLCV(sym, timeframe string, limit int) ([]ccxt.OHL
 			continue
 		}
 		m.mu.Lock()
-		m.ohlcvs[cacheKey] = cachedOHLCV{data: candles, ts: time.Now()}
+		m.oHLCVs[cacheKey] = cachedOHLCV{data: candles, ts: time.Now()}
 		m.mu.Unlock()
 		return candles, nil
 	}
@@ -328,11 +328,11 @@ func (m *ExchangeManager) GetOHLCV(sym, timeframe string, limit int) ([]ccxt.OHL
 
 // ─── OrderBook ───────────────────────────────────────────────
 
-func (m *ExchangeManager) GetOrderBook(sym string, limit int) (ccxt.OrderBook, error) {
+func (m *Manager) GetOrderBook(sym string, limit int) (ccxt.OrderBook, error) {
 	cacheKey := fmt.Sprintf("%s:%d", sym, limit)
 
 	m.mu.RLock()
-	if c, ok := m.orderbooks[cacheKey]; ok && time.Since(c.ts) < 5*time.Second {
+	if c, ok := m.orderBooks[cacheKey]; ok && time.Since(c.ts) < 5*time.Second {
 		m.mu.RUnlock()
 		return c.data, nil
 	}
@@ -350,7 +350,7 @@ func (m *ExchangeManager) GetOrderBook(sym string, limit int) (ccxt.OrderBook, e
 			continue
 		}
 		m.mu.Lock()
-		m.orderbooks[cacheKey] = cachedOrderBook{data: ob, ts: time.Now()}
+		m.orderBooks[cacheKey] = cachedOrderBook{data: ob, ts: time.Now()}
 		m.mu.Unlock()
 		return ob, nil
 	}

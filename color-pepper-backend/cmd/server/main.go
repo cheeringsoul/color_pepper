@@ -1,16 +1,17 @@
 package main
 
 import (
+	"color-pepper-backend/internal/exchange"
 	"encoding/json"
 	"log"
 	"net/http"
 	"strconv"
 )
 
-var exMgr *ExchangeManager
+var exMgr *Manager
 
 func main() {
-	exMgr = NewExchangeManager()
+	exMgr = NewManager()
 
 	wsHub := NewWSHub()
 	wsHub.StartWatching()

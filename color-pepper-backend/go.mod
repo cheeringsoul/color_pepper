@@ -1,4 +1,4 @@
-module color_pepper_backend
+module color-pepper-backend
 
 go 1.24.4
 
